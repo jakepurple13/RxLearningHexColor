@@ -6,7 +6,6 @@ import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
-import android.database.Cursor
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
@@ -226,7 +225,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun addToFavorites(colorApi: ColorApi) {
         val favorites = (defaultSharedPref.getObject("favorites", emptyList<ColorApi>()) ?: emptyList()).toMutableList()
-        if (favorites.all { it.name?.value != colorApi.name?.value }) favorites.add(colorApi)
+        if (favorites.all { it.name?.value != colorApi.name?.value || it.hex?.value != colorApi.hex?.value }) favorites.add(colorApi)
             .also { Toast.makeText(this, "Added to Favorites", Toast.LENGTH_SHORT).show() }
         defaultSharedPref.edit().putObject("favorites", favorites).apply()
     }
@@ -263,12 +262,17 @@ class MainActivity : AppCompatActivity() {
             .setItems(options) { dialog, item ->
                 when (options[item]) {
                     "Take Photo" -> dispatchTakePictureIntent()
-                    "Choose from Gallery" ->
-                        startActivityForResult(Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI), pickPhotoRequestID)
+                    "Choose from Gallery" -> pickPhoto()
                     "Cancel" -> dialog.dismiss()
                 }
             }
             .show()
+    }
+
+    private fun pickPhoto() {
+        val photoPickerIntent = Intent(Intent.ACTION_PICK)
+        photoPickerIntent.type = "image/*"
+        startActivityForResult(photoPickerIntent, pickPhotoRequestID)
     }
 
     private lateinit var currentPhotoPath: String
@@ -303,23 +307,8 @@ class MainActivity : AppCompatActivity() {
         if (resultCode != Activity.RESULT_CANCELED) {
             when (requestCode) {
                 takePhotoRequestID -> if (resultCode == Activity.RESULT_OK && data != null) imageShow(BitmapFactory.decodeFile(currentPhotoPath))
-                pickPhotoRequestID -> if (resultCode == Activity.RESULT_OK && data != null) {
-                    val selectedImage: Uri? = data.data
-                    @Suppress("DEPRECATION") val filePathColumn = arrayOf(MediaStore.Images.Media.DATA)
-                    if (selectedImage != null) {
-                        val cursor: Cursor? = contentResolver.query(
-                            selectedImage,
-                            filePathColumn, null, null, null
-                        )
-                        if (cursor != null) {
-                            cursor.moveToFirst()
-                            val columnIndex: Int = cursor.getColumnIndex(filePathColumn[0])
-                            val picturePath: String = cursor.getString(columnIndex)
-                            imageShow(BitmapFactory.decodeFile(picturePath))
-                            cursor.close()
-                        }
-                    }
-                }
+                pickPhotoRequestID -> if (resultCode == Activity.RESULT_OK && data != null)
+                    imageShow(BitmapFactory.decodeStream(contentResolver.openInputStream(data.data!!)))
             }
         }
     }
