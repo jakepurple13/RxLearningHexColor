@@ -16,11 +16,15 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
-import android.view.*
+import android.view.GestureDetector
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
+import androidx.palette.graphics.Palette
 import androidx.recyclerview.widget.RecyclerView
 import com.davemorrissey.labs.subscaleview.ImageSource
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -46,6 +50,7 @@ import io.reactivex.subjects.PublishSubject
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.favorite_item.view.*
 import kotlinx.android.synthetic.main.favorite_layout.view.*
+import kotlinx.android.synthetic.main.zoom_custom_title.view.*
 import kotlinx.android.synthetic.main.zoom_layout.view.*
 import java.io.File
 import java.io.IOException
@@ -152,7 +157,7 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    @SuppressLint("ClickableViewAccessibility")
+    @SuppressLint("ClickableViewAccessibility", "InflateParams")
     private fun getImagePixel(bitmap: Bitmap) {
         val view = layoutInflater.inflate(R.layout.zoom_layout, null)
         val gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
@@ -168,9 +173,14 @@ class MainActivity : AppCompatActivity() {
         view.zoomImage.setImage(ImageSource.bitmap(bitmap))
         view.zoomImage.setOnTouchListener { _, motionEvent -> gestureDetector.onTouchEvent(motionEvent) }
 
+        val titleView = layoutInflater.inflate(R.layout.zoom_custom_title, null)
+        val palette = Palette.from(bitmap).generate()
+        palette.dominantSwatch?.titleTextColor?.let { titleView.titleText.setTextColor(it) }
+        palette.dominantSwatch?.rgb?.let { titleView.zoomTitleBackground.setBackgroundColor(it) }
+
         MaterialAlertDialogBuilder(this)
+            .setCustomTitle(titleView)
             .setView(view)
-            .setTitle("Pick a Color")
             .setPositiveButton("Done") { _, _ -> }
             .show()
     }
@@ -195,7 +205,7 @@ class MainActivity : AppCompatActivity() {
         SELECT_IMAGE("Pick a color from a picture");
 
         fun data(c: ColorApi) = when (this) {
-            ADD -> "Add ${c.name?.value} to favorites"
+            ADD -> "Add ${c.name?.value ?: c.hex?.value} to favorites"
             else -> info
         }
     }
