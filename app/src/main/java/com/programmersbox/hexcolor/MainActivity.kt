@@ -75,12 +75,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        requestPermissions(
-            Manifest.permission.INTERNET,
-            Manifest.permission.CAMERA,
-            Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE
-        ) {
+        requestPermissions(Manifest.permission.INTERNET) {
             if (!it.isGranted) Toast.makeText(this, "Please accept the permissions: ${it.deniedPermissions}", Toast.LENGTH_SHORT).show()
         }
 
@@ -187,7 +182,7 @@ class MainActivity : AppCompatActivity() {
     private fun animateColorChange(newColor: Int) = colorAnimator((layout.background as ColorDrawable).color, newColor)
         .subscribe { color -> layout.setBackgroundColor(color).also { window.statusBarColor = color } }
         .addTo(disposables)
-        .let { Unit }
+        .unit()
 
     private fun colorAnimator(fromColor: Int, toColor: Int): Observable<Int> {
         val valueAnimator = ValueAnimator.ofObject(ArgbEvaluator(), fromColor, toColor)
@@ -223,6 +218,9 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    @Suppress("unused")
+    private fun Any?.unit() = Unit
+
     private fun addToFavorites(colorApi: ColorApi) {
         val favorites = (defaultSharedPref.getObject("favorites", emptyList<ColorApi>()) ?: emptyList()).toMutableList()
         if (favorites.all { it.name?.value != colorApi.name?.value || it.hex?.value != colorApi.hex?.value }) favorites.add(colorApi)
@@ -230,39 +228,44 @@ class MainActivity : AppCompatActivity() {
         defaultSharedPref.edit().putObject("favorites", favorites).apply()
     }
 
-    private fun randomColor(colorString: String? = null) {
+    private fun newColor(colorString: String, drop: Int) {
         clear.performClick()
-        (colorString ?: Random.nextColor().toHexString()).toUpperCase(Locale.getDefault()).drop(1).forEach { rxArea.digitClicked("$it") }
+        colorString.toUpperCase(Locale.getDefault()).drop(drop).forEach { rxArea.digitClicked("$it") }
     }
 
-    private fun randomColorInt(colorString: Int? = null) {
-        clear.performClick()
-        (colorString ?: Random.nextColor()).toHexString().toUpperCase(Locale.getDefault()).drop(3).forEach { rxArea.digitClicked("$it") }
-    }
+    private fun randomColor(colorString: String? = null) = newColor(colorString ?: Random.nextColor().toHexString(), 1)
+    private fun randomColorInt(colorString: Int? = null) = newColor((colorString ?: Random.nextColor()).toHexString(), 3)
 
-    private fun showMenu(colorApi: ColorApi) {
-        MaterialAlertDialogBuilder(this)
-            .setTitle("Options")
-            .setItems(MenuOptions.values().map { it.data(colorApi) }.toTypedArray()) { _, i ->
-                when (MenuOptions.values()[i]) {
-                    MenuOptions.ADD -> addToFavorites(colorApi)
-                    MenuOptions.RANDOM -> randomColor()
-                    MenuOptions.VIEW -> showFavorites()
-                    MenuOptions.MORE_INFO -> moreColorInfo(colorApi)
-                    MenuOptions.SELECT_IMAGE -> selectImage()
-                }
+    private fun showMenu(colorApi: ColorApi) = MaterialAlertDialogBuilder(this)
+        .setTitle("Options")
+        .setItems(MenuOptions.values().map { it.data(colorApi) }.toTypedArray()) { _, i ->
+            when (MenuOptions.values()[i]) {
+                MenuOptions.ADD -> addToFavorites(colorApi)
+                MenuOptions.RANDOM -> randomColor()
+                MenuOptions.VIEW -> showFavorites()
+                MenuOptions.MORE_INFO -> moreColorInfo(colorApi)
+                MenuOptions.SELECT_IMAGE -> selectImage()
             }
-            .show()
-    }
+        }
+        .show().unit()
+
+    private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
 
     private fun selectImage() {
         val options = arrayOf<CharSequence>("Take Photo", "Choose from Gallery", "Cancel")
         MaterialAlertDialogBuilder(this)
-            .setTitle("Choose your profile picture")
+            .setTitle("Take a picture from")
             .setItems(options) { dialog, item ->
                 when (options[item]) {
-                    "Take Photo" -> dispatchTakePictureIntent()
-                    "Choose from Gallery" -> pickPhoto()
+                    "Take Photo" -> requestPermissions(
+                        Manifest.permission.CAMERA,
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE
+                    ) { if (it.isGranted) dispatchTakePictureIntent() else toast("Please accept the permissions in order to take a photo") }
+                    "Choose from Gallery" -> requestPermissions(
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE
+                    ) { if (it.isGranted) pickPhoto() else toast("Please accept the permissions in order to pick a photo") }
                     "Cancel" -> dialog.dismiss()
                 }
             }
@@ -285,29 +288,26 @@ class MainActivity : AppCompatActivity() {
         getExternalFilesDir(Environment.DIRECTORY_PICTURES)
     ).apply { currentPhotoPath = absolutePath }
 
-    private fun dispatchTakePictureIntent() {
-        Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takePictureIntent ->
-            takePictureIntent.resolveActivity(packageManager)?.also {
-                val photoFile: File? = try {
-                    createImageFile()
-                } catch (ex: IOException) {
-                    null
-                }
-                photoFile?.also {
-                    val photoURI: Uri = FileProvider.getUriForFile(this, "com.example.android.fileprovider", it)
-                    takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
-                    startActivityForResult(takePictureIntent, takePhotoRequestID)
-                }
+    private fun dispatchTakePictureIntent() = Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takePictureIntent ->
+        takePictureIntent.resolveActivity(packageManager)?.also {
+            try {
+                createImageFile()
+            } catch (ex: IOException) {
+                null
+            }?.also {
+                val photoURI: Uri = FileProvider.getUriForFile(this, "com.example.android.fileprovider", it)
+                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
+                startActivityForResult(takePictureIntent, takePhotoRequestID)
             }
         }
-    }
+    }.unit()
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (resultCode != Activity.RESULT_CANCELED) {
             when (requestCode) {
                 takePhotoRequestID -> if (resultCode == Activity.RESULT_OK && data != null) imageShow(BitmapFactory.decodeFile(currentPhotoPath))
-                pickPhotoRequestID -> if (resultCode == Activity.RESULT_OK && data != null)
+                pickPhotoRequestID -> if (resultCode == Activity.RESULT_OK && data?.data != null)
                     imageShow(BitmapFactory.decodeStream(contentResolver.openInputStream(data.data!!)))
             }
         }
@@ -333,6 +333,7 @@ class MainActivity : AppCompatActivity() {
         )
         MaterialAlertDialogBuilder(this)
             .setView(view)
+            .setPositiveButton("Done") { d, _ -> d.dismiss() }
             .setOnDismissListener { defaultSharedPref.edit().putObject("favorites", adapter.dataList).apply() }
             .show()
     }
