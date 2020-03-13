@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    tools:parentTag="androidx.constraintlayout.widget.ConstraintLayout">
+
+    <ImageView
+        android:id="@+id/mainImageView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:elevation="1dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:ignore="ContentDescription"
+        tools:src="@drawable/baseline_menu_white_18dp"
+        tools:tint="@color/colorPrimary" />
+
+    <ImageView
+        android:id="@+id/shadowImageView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:elevation="0dp"
+        android:tint="@color/colorAccent"
+        app:layout_constraintBottom_toBottomOf="@id/mainImageView"
+        app:layout_constraintEnd_toEndOf="@id/mainImageView"
+        app:layout_constraintStart_toStartOf="@id/mainImageView"
+        app:layout_constraintTop_toTopOf="@id/mainImageView"
+        tools:ignore="ContentDescription"
+        android:layout_marginStart="1.5dp"
+        android:layout_marginTop="1.3dp"
+        tools:src="@drawable/baseline_menu_white_18dp" />
+
+</merge>

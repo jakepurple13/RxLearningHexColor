@@ -85,6 +85,12 @@ class MainActivity : AppCompatActivity() {
 
         rxArea = RxArea(defaultSharedPref, back.clicks(), clear.clicks(), digitStreams, disposables, backgroundUpdate, uiShow, colorApiShow)
 
+        menuOptions
+            .clicks()
+            .map { colorApiShow.value ?: colorApiBlack }
+            .subscribe(this::showMenu)
+            .addTo(disposables)
+
         back
             .longClicks()
             .subscribe { clear.performClick() }
@@ -99,12 +105,6 @@ class MainActivity : AppCompatActivity() {
             .clicks()
             .map { colorApiShow.value ?: colorApiBlack }
             .subscribe(this::moreColorInfo)
-            .addTo(disposables)
-
-        hex
-            .clicks()
-            .map { colorApiShow.value ?: colorApiBlack }
-            .subscribe(this::showMenu)
             .addTo(disposables)
 
         hex
@@ -180,7 +180,25 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun animateColorChange(newColor: Int) = colorAnimator((layout.background as ColorDrawable).color, newColor)
-        .subscribe { color -> layout.setBackgroundColor(color).also { window.statusBarColor = color } }
+        .subscribe { color ->
+            layout.setBackgroundColor(color)
+                .also { window.statusBarColor = color }
+                .also {
+                    shadowTest.setImageColor(ColorUtils.tintColor(color))
+                    shadowTest.setShadowLayer(1.5f, 1.3f, ColorUtils.tintColor(color, true))
+                }
+                .also {
+                    menuOptions.setColorFilter(ColorUtils.tintColor(color))
+                    menuOptionsShadow.setColorFilter(ColorUtils.tintColor(color, true))
+                }
+                .also {
+                    listOf(zero, one, two, three, four, five, six, seven, eight, nine, A, B, C, D, E, F, hex, rgb, back, clear, color_name)
+                        .forEach {
+                            it.setTextColor(ColorUtils.tintColor(color))
+                            it.setShadowLayer(1.6f, 1.5f, 1.3f, ColorUtils.tintColor(color, true))
+                        }
+                }
+        }
         .addTo(disposables)
         .unit()
 
