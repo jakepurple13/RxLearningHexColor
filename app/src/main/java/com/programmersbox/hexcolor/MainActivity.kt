@@ -68,6 +68,7 @@ class MainActivity : AppCompatActivity() {
     private val imageShow = PublishSubject.create<Bitmap>()
     private val imageGet = PublishSubject.create<Int>()
     private val currentApiColor get() = colorApiShow.value ?: colorApiBlack
+    private val history = mutableListOf<ColorApi>()
 
     private lateinit var rxArea: RxArea
 
@@ -142,6 +143,12 @@ class MainActivity : AppCompatActivity() {
             .subscribe { c -> color_name.text = c.name?.value ?: "" }
             .addTo(disposables)
 
+        colorApiShow
+            .filter { it != colorApiBlack }
+            .distinct(ColorApi::hex)
+            .subscribe { history.addMax(it) }
+            .addTo(disposables)
+
         imageShow
             .subscribe(this::getImagePixel)
             .addTo(disposables)
@@ -150,6 +157,11 @@ class MainActivity : AppCompatActivity() {
             .subscribe(this::randomColorInt)
             .addTo(disposables)
 
+    }
+
+    private fun <T> MutableList<T>.addMax(item: T) {
+        add(0, item)
+        if (size > 50) removeAt(lastIndex)
     }
 
     @SuppressLint("ClickableViewAccessibility", "InflateParams")
@@ -203,7 +215,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun colorAnimator(fromColor: Int, toColor: Int): Observable<Int> {
         val valueAnimator = ValueAnimator.ofObject(ArgbEvaluator(), fromColor, toColor)
-        valueAnimator.duration = 250 // milliseconds
+        valueAnimator.duration = 250
         val observable = Observable.create<Int> { emitter -> valueAnimator.addUpdateListener { emitter.onNext(it.animatedValue as Int) } }
         return observable.doOnSubscribe { valueAnimator.start() }
     }
@@ -213,7 +225,8 @@ class MainActivity : AppCompatActivity() {
         RANDOM("Random Color"),
         VIEW("View Favorites"),
         MORE_INFO("More Info"),
-        SELECT_IMAGE("Pick a color from a picture");
+        SELECT_IMAGE("Pick a color from a picture"),
+        VIEW_HISTORY("View History");
 
         fun data(c: ColorApi) = when (this) {
             ADD -> "Add ${c.name?.value ?: c.hex?.value} to favorites"
@@ -262,6 +275,7 @@ class MainActivity : AppCompatActivity() {
                 MenuOptions.VIEW -> showFavorites()
                 MenuOptions.MORE_INFO -> moreColorInfo(colorApi)
                 MenuOptions.SELECT_IMAGE -> selectImage()
+                MenuOptions.VIEW_HISTORY -> showHistory()
             }
         }
         .show().unit()
@@ -339,6 +353,18 @@ class MainActivity : AppCompatActivity() {
                     imageShow(BitmapFactory.decodeStream(contentResolver.openInputStream(data.data!!)))
             }
         }
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun showHistory() {
+        val view = layoutInflater.inflate(R.layout.favorite_layout, null)
+        val adapter = FavoriteAdapter(history)
+        view.favTitle.text = "History: ${history.size}"
+        view.favoriteRV.adapter = adapter
+        MaterialAlertDialogBuilder(this)
+            .setView(view)
+            .setPositiveButton("Done") { d, _ -> d.dismiss() }
+            .show()
     }
 
     @SuppressLint("SetTextI18n")
