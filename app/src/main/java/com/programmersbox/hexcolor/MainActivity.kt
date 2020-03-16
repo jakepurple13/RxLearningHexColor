@@ -35,15 +35,14 @@ import com.programmersbox.dragswipe.DragSwipeAdapter
 import com.programmersbox.dragswipe.DragSwipeUtils
 import com.programmersbox.gsonutils.getObject
 import com.programmersbox.gsonutils.putObject
-import com.programmersbox.helpfulutils.defaultSharedPref
-import com.programmersbox.helpfulutils.nextColor
-import com.programmersbox.helpfulutils.requestPermissions
-import com.programmersbox.helpfulutils.toHexString
+import com.programmersbox.helpfulutils.*
 import com.programmersbox.rxutils.invoke
 import io.reactivex.Observable
+import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.addTo
+import io.reactivex.rxkotlin.subscribeBy
 import io.reactivex.subjects.BehaviorSubject
 import io.reactivex.subjects.PublishSubject
 import kotlinx.android.synthetic.main.activity_main.*
@@ -66,8 +65,9 @@ class MainActivity : AppCompatActivity() {
     private val backgroundUpdate = PublishSubject.create<Int>()
     private val uiShow = PublishSubject.create<String>()
     private val colorApiShow = BehaviorSubject.create<ColorApi>()
-    private val imageShow = BehaviorSubject.create<Bitmap>()
-    private val imageGet = BehaviorSubject.create<Int>()
+    private val imageShow = PublishSubject.create<Bitmap>()
+    private val imageGet = PublishSubject.create<Int>()
+    private val currentApiColor get() = colorApiShow.value ?: colorApiBlack
 
     private lateinit var rxArea: RxArea
 
@@ -87,7 +87,7 @@ class MainActivity : AppCompatActivity() {
 
         menuOptions
             .clicks()
-            .map { colorApiShow.value ?: colorApiBlack }
+            .map { currentApiColor }
             .subscribe(this::showMenu)
             .addTo(disposables)
 
@@ -98,12 +98,13 @@ class MainActivity : AppCompatActivity() {
 
         color_name
             .longClicks()
-            .subscribe { colorApiShow.value?.let(this::addToFavorites) }
+            .map { currentApiColor }
+            .subscribe(this::addToFavorites)
             .addTo(disposables)
 
         color_name
             .clicks()
-            .map { colorApiShow.value ?: colorApiBlack }
+            .map { currentApiColor }
             .subscribe(this::moreColorInfo)
             .addTo(disposables)
 
@@ -114,7 +115,7 @@ class MainActivity : AppCompatActivity() {
 
         rgb
             .clicks()
-            .map { colorApiShow.value ?: colorApiBlack }
+            .map { currentApiColor }
             .subscribe(this::moreColorInfo)
             .addTo(disposables)
 
@@ -176,6 +177,8 @@ class MainActivity : AppCompatActivity() {
             .setCustomTitle(titleView)
             .setView(view)
             .setPositiveButton("Done") { _, _ -> }
+            .whatIf(currentPhotoPath?.isNotEmpty()) { setNeutralButton("Save Photo") { _, _ -> File(currentPhotoPath!!).createNewFile() } }
+            .setOnDismissListener { currentPhotoPath = "" }
             .show()
     }
 
@@ -183,10 +186,6 @@ class MainActivity : AppCompatActivity() {
         .subscribe { color ->
             layout.setBackgroundColor(color)
                 .also { window.statusBarColor = color }
-                .also {
-                    shadowTest.setImageColor(ColorUtils.tintColor(color))
-                    shadowTest.setShadowLayer(1.5f, 1.3f, ColorUtils.tintColor(color, true))
-                }
                 .also {
                     menuOptions.setColorFilter(ColorUtils.tintColor(color))
                     menuOptionsShadow.setColorFilter(ColorUtils.tintColor(color, true))
@@ -296,27 +295,38 @@ class MainActivity : AppCompatActivity() {
         startActivityForResult(photoPickerIntent, pickPhotoRequestID)
     }
 
-    private lateinit var currentPhotoPath: String
+    private var currentPhotoPath: String? = null
 
     @SuppressLint("SimpleDateFormat")
     @Throws(IOException::class)
-    private fun createImageFile(): File = File.createTempFile(
-        "JPEG_${SimpleDateFormat("yyyyMMdd_HHmmss").format(Date())}_",
-        ".jpg",
-        getExternalFilesDir(Environment.DIRECTORY_PICTURES)
-    ).apply { currentPhotoPath = absolutePath }
+    private fun createImageFile(): Single<File> = Single.create emitter@{ emitter ->
+        try {
+            emitter.onSuccess(
+                File.createTempFile(
+                    "JPEG_${SimpleDateFormat("yyyyMMdd_HHmmss").format(Date())}_", ".jpg",
+                    getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+                )
+            )
+        } catch (e: IOException) {
+            emitter.onError(e)
+        }
+    }
+
+    private fun startPictureIntent(file: File, takePictureIntent: Intent) {
+        currentPhotoPath = file.absolutePath
+        val photoURI: Uri = FileProvider.getUriForFile(this, "com.example.android.fileprovider", file)
+        takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
+        startActivityForResult(takePictureIntent, takePhotoRequestID)
+    }
 
     private fun dispatchTakePictureIntent() = Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takePictureIntent ->
         takePictureIntent.resolveActivity(packageManager)?.also {
-            try {
-                createImageFile()
-            } catch (ex: IOException) {
-                null
-            }?.also {
-                val photoURI: Uri = FileProvider.getUriForFile(this, "com.example.android.fileprovider", it)
-                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
-                startActivityForResult(takePictureIntent, takePhotoRequestID)
-            }
+            createImageFile()
+                .subscribeBy(
+                    onError = { toast("Something went wrong, please try again") },
+                    onSuccess = { startPictureIntent(it, takePictureIntent) }
+                )
+                .addTo(disposables)
         }
     }.unit()
 
@@ -324,7 +334,7 @@ class MainActivity : AppCompatActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (resultCode != Activity.RESULT_CANCELED) {
             when (requestCode) {
-                takePhotoRequestID -> if (resultCode == Activity.RESULT_OK && data != null) imageShow(BitmapFactory.decodeFile(currentPhotoPath))
+                takePhotoRequestID -> if (resultCode == Activity.RESULT_OK && data != null) imageShow(BitmapFactory.decodeFile(currentPhotoPath!!))
                 pickPhotoRequestID -> if (resultCode == Activity.RESULT_OK && data?.data != null)
                     imageShow(BitmapFactory.decodeStream(contentResolver.openInputStream(data.data!!)))
             }
@@ -339,7 +349,7 @@ class MainActivity : AppCompatActivity() {
         view.favTitle.text = "Favorites: ${favorites.size}"
         view.favoriteRV.adapter = adapter
         DragSwipeUtils.setDragSwipeUp(
-            adapter, view.favoriteRV, Direction.UP + Direction.DOWN, Direction.START + Direction.END,
+            adapter, view.favoriteRV, listOf(Direction.UP, Direction.DOWN), listOf(Direction.START, Direction.END),
             object : DragSwipeActions<ColorApi, FavHolder> {
                 override fun onSwiped(
                     viewHolder: RecyclerView.ViewHolder, direction: Direction, dragSwipeAdapter: DragSwipeAdapter<ColorApi, FavHolder>
