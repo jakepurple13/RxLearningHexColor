@@ -170,15 +170,15 @@ class MainActivity : AppCompatActivity() {
         favoriteSubject
             .observeOn(AndroidSchedulers.mainThread())
             .subscribeOn(AndroidSchedulers.mainThread())
-            .map { favoriteList.any(favoriteCheck) }
+            .map { favoriteList.any(favoriteCheck) && rxArea.getCurrentHex().length == 7 }
             .map { if (it) 0f to 1f else 1f to 0f }
+            .map { ValueAnimator.ofFloat(it.first, it.second) }
             .subscribe {
-                val animator = ValueAnimator.ofFloat(it.first, it.second)
-                animator.addUpdateListener { animation: ValueAnimator ->
+                it.addUpdateListener { animation: ValueAnimator ->
                     favImage.progress = animation.animatedValue as Float
                     favImageShadow.progress = animation.animatedValue as Float
                 }
-                animator.start()
+                it.start()
             }
             .addTo(disposables)
 

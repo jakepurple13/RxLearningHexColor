@@ -105,5 +105,6 @@ class RxArea(
     }
 
     fun digitClicked(digit: String) = if (currentHexValue.length < 7) hexStringSubject.onNext(currentHexValue + digit) else Unit
+    fun getCurrentHex() = currentHexValue
 
 }
