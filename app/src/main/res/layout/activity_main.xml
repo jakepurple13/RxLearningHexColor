@@ -26,29 +26,43 @@
         app:shadowDrawable="@drawable/baseline_menu_white_18dp"
         tools:ignore="ContentDescription" />-->
 
+    <com.airbnb.lottie.LottieAnimationView
+        android:id="@+id/favImage"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:elevation="1dp"
+        app:layout_constraintBottom_toBottomOf="@id/favoritesImage"
+        app:layout_constraintEnd_toEndOf="@id/favoritesImage"
+        app:layout_constraintStart_toStartOf="@id/favoritesImage"
+        app:layout_constraintTop_toTopOf="@id/favoritesImage"
+        app:lottie_loop="true"
+        app:lottie_rawRes="@raw/plus_to_x" />
+
+    <com.airbnb.lottie.LottieAnimationView
+        android:id="@+id/favImageShadow"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginStart="1.5dp"
+        android:layout_marginTop="1.3dp"
+        android:tint="#000000"
+        app:layout_constraintBottom_toBottomOf="@id/favImage"
+        app:layout_constraintEnd_toEndOf="@id/favImage"
+        app:layout_constraintStart_toStartOf="@id/favImage"
+        app:layout_constraintTop_toTopOf="@id/favImage"
+        app:lottie_loop="true"
+        app:lottie_rawRes="@raw/plus_to_x"
+        tools:ignore="ContentDescription" />
+
     <ImageView
         android:id="@+id/favoritesImage"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:elevation="1dp"
         android:src="@android:drawable/ic_input_add"
+        android:visibility="invisible"
         app:layout_constraintBottom_toBottomOf="@id/menuOptions"
         app:layout_constraintStart_toStartOf="@id/rgb"
         app:layout_constraintTop_toTopOf="@id/hex"
-        tools:ignore="ContentDescription" />
-
-    <ImageView
-        android:id="@+id/favoritesImageShadow"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="1.5dp"
-        android:layout_marginTop="1.3dp"
-        android:src="@android:drawable/ic_input_add"
-        android:tint="#000000"
-        app:layout_constraintBottom_toBottomOf="@id/favoritesImage"
-        app:layout_constraintEnd_toEndOf="@id/favoritesImage"
-        app:layout_constraintStart_toStartOf="@id/favoritesImage"
-        app:layout_constraintTop_toTopOf="@id/favoritesImage"
         tools:ignore="ContentDescription" />
 
     <ImageView

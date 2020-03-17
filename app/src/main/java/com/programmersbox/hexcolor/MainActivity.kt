@@ -6,10 +6,7 @@ import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Color
-import android.graphics.PointF
+import android.graphics.*
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Bundle
@@ -25,6 +22,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.palette.graphics.Palette
 import androidx.recyclerview.widget.RecyclerView
+import com.airbnb.lottie.LottieProperty
+import com.airbnb.lottie.model.KeyPath
 import com.davemorrissey.labs.subscaleview.ImageSource
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.jakewharton.rxbinding2.view.clicks
@@ -70,7 +69,9 @@ class MainActivity : AppCompatActivity() {
     private val favoriteSubject = PublishSubject.create<Unit>()
     private val currentApiColor get() = colorApiShow.value ?: colorApiBlack
     private val favoriteList get() = (defaultSharedPref.getObject("favorites", emptyList<ColorApi>()) ?: emptyList()).toMutableList()
-    private val history = mutableListOf<ColorApi>()
+    private val history get() = (defaultSharedPref.getObject("history", emptyList<ColorApi>()) ?: emptyList()).toMutableList()
+    private val favoriteCheck: (ColorApi) -> Boolean =
+        { it.name?.value ?: "" == currentApiColor.name?.value ?: "" && it.hex?.value == currentApiColor.hex?.value }
 
     private lateinit var rxArea: RxArea
 
@@ -78,7 +79,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        requestPermissions(Manifest.permission.INTERNET) {
+        requestPermissions(Manifest.permission.INTERNET, Manifest.permission.ACCESS_NETWORK_STATE) {
             if (!it.isGranted) Toast.makeText(this, "Please accept the permissions: ${it.deniedPermissions}", Toast.LENGTH_SHORT).show()
         }
 
@@ -121,9 +122,9 @@ class MainActivity : AppCompatActivity() {
             .subscribe(this::moreColorInfo)
             .addTo(disposables)
 
-        favoritesImage
+        favImage
             .clicks()
-            .map { favoriteList.any { it.name?.value == currentApiColor.name?.value && it.hex?.value == currentApiColor.hex?.value } }
+            .map { favoriteList.any(favoriteCheck) }
             .subscribe { if (it) removeFromFavorites(currentApiColor) else addToFavorites(currentApiColor) }
             .addTo(disposables)
 
@@ -139,7 +140,8 @@ class MainActivity : AppCompatActivity() {
             .addTo(disposables)
 
         uiShow
-            .subscribe { favoriteSubject(Unit) }
+            .map { Unit }
+            .subscribe(favoriteSubject::invoke)
             .addTo(disposables)
 
         colorApiShow
@@ -157,7 +159,7 @@ class MainActivity : AppCompatActivity() {
         colorApiShow
             .filter { it != colorApiBlack }
             .distinct(ColorApi::hex)
-            .subscribe { history.addMax(it) }
+            .subscribe(this::addToHistory)
             .addTo(disposables)
 
         colorApiShow
@@ -166,10 +168,17 @@ class MainActivity : AppCompatActivity() {
             .addTo(disposables)
 
         favoriteSubject
-            .map { favoriteList.any { it.name?.value ?: "" == currentApiColor.name?.value ?: "" && it.hex?.value == currentApiColor.hex?.value } }
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribeOn(AndroidSchedulers.mainThread())
+            .map { favoriteList.any(favoriteCheck) }
+            .map { if (it) 0f to 1f else 1f to 0f }
             .subscribe {
-                favoritesImage.setImageResource(if (it) android.R.drawable.ic_delete else android.R.drawable.ic_input_add)
-                favoritesImageShadow.setImageResource(if (it) android.R.drawable.ic_delete else android.R.drawable.ic_input_add)
+                val animator = ValueAnimator.ofFloat(it.first, it.second)
+                animator.addUpdateListener { animation: ValueAnimator ->
+                    favImage.progress = animation.animatedValue as Float
+                    favImageShadow.progress = animation.animatedValue as Float
+                }
+                animator.start()
             }
             .addTo(disposables)
 
@@ -186,6 +195,12 @@ class MainActivity : AppCompatActivity() {
     private fun <T> MutableList<T>.addMax(item: T) {
         add(0, item)
         if (size > 50) removeAt(lastIndex)
+    }
+
+    private fun addToHistory(colorApi: ColorApi) {
+        val hist = history
+        hist.addMax(colorApi)
+        defaultSharedPref.edit().putObject("history", hist).apply()
     }
 
     @SuppressLint("ClickableViewAccessibility", "InflateParams")
@@ -227,8 +242,16 @@ class MainActivity : AppCompatActivity() {
                     menuOptionsShadow.setColorFilter(ColorUtils.tintColor(color, true))
                 }
                 .also {
-                    favoritesImage.setColorFilter(ColorUtils.tintColor(color))
-                    favoritesImageShadow.setColorFilter(ColorUtils.tintColor(color, true))
+                    favImage.addValueCallback(
+                        KeyPath("**"),
+                        LottieProperty.COLOR_FILTER,
+                        { PorterDuffColorFilter(ColorUtils.tintColor(color), PorterDuff.Mode.SRC_ATOP) }
+                    )
+                    favImageShadow.addValueCallback(
+                        KeyPath("**"),
+                        LottieProperty.COLOR_FILTER,
+                        { PorterDuffColorFilter(ColorUtils.tintColor(color, true), PorterDuff.Mode.SRC_ATOP) }
+                    )
                 }
                 .also {
                     listOf(zero, one, two, three, four, five, six, seven, eight, nine, A, B, C, D, E, F, hex, rgb, back, clear, color_name)
@@ -437,6 +460,7 @@ class MainActivity : AppCompatActivity() {
         @SuppressLint("SetTextI18n")
         override fun FavHolder.onBind(item: ColorApi, position: Int) {
             itemView.setBackgroundColor(item.hex?.value?.let(Color::parseColor) ?: Color.BLACK)
+            name.setTextColor(ColorUtils.tintColor(item.hex?.value?.let(Color::parseColor) ?: Color.BLACK))
             name.text = "${position + 1}. ${item.name?.value ?: item.hex?.value}"
             itemView
                 .clicks()
