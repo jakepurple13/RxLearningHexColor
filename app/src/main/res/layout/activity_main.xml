@@ -6,6 +6,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@android:color/black"
+    android:clipChildren="false"
+    android:clipToPadding="false"
     tools:context=".MainActivity"
     tools:ignore="HardcodedText">
 
@@ -23,6 +25,31 @@
         app:layout_constraintTop_toTopOf="@id/hex"
         app:shadowDrawable="@drawable/baseline_menu_white_18dp"
         tools:ignore="ContentDescription" />-->
+
+    <ImageView
+        android:id="@+id/favoritesImage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:elevation="1dp"
+        android:src="@android:drawable/ic_input_add"
+        app:layout_constraintBottom_toBottomOf="@id/menuOptions"
+        app:layout_constraintStart_toStartOf="@id/rgb"
+        app:layout_constraintTop_toTopOf="@id/hex"
+        tools:ignore="ContentDescription" />
+
+    <ImageView
+        android:id="@+id/favoritesImageShadow"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="1.5dp"
+        android:layout_marginTop="1.3dp"
+        android:src="@android:drawable/ic_input_add"
+        android:tint="#000000"
+        app:layout_constraintBottom_toBottomOf="@id/favoritesImage"
+        app:layout_constraintEnd_toEndOf="@id/favoritesImage"
+        app:layout_constraintStart_toStartOf="@id/favoritesImage"
+        app:layout_constraintTop_toTopOf="@id/favoritesImage"
+        tools:ignore="ContentDescription" />
 
     <ImageView
         android:id="@+id/menuOptions"

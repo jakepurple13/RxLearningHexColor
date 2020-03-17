@@ -29,7 +29,7 @@ class RxArea(
         val rgb = Color.parseColor(s).valueOf()
         colorApiBlack.copy(
             name = null,
-            hex = Hex(s, null),
+            hex = Hex(s, s.drop(1)),
             rgb = Rgb(r = rgb.first, g = rgb.second, b = rgb.third, fraction = null, value = "rgb(${rgb.first}, ${rgb.second}, ${rgb.third})")
         )
     }
@@ -51,11 +51,18 @@ class RxArea(
             .subscribe(apiSubject::invoke)
             .addTo(disposables)
 
+        /*hexStringSubject
+            .ioMain()
+            .map { s -> if (s.length == 7) errorColor(s) else colorApiBlack }
+            .subscribe(apiSubject::invoke)
+            .addTo(disposables)*/
+
         hexStringSubject
             .subscribe(uiShow::invoke)
             .addTo(disposables)
 
         apiSubject
+            .distinctUntilChanged()
             .map { i -> i.hex?.value?.let(Color::parseColor) ?: Color.BLACK }
             .subscribe(backgroundUpdate::invoke)
             .addTo(disposables)

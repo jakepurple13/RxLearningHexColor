@@ -67,7 +67,9 @@ class MainActivity : AppCompatActivity() {
     private val colorApiShow = BehaviorSubject.create<ColorApi>()
     private val imageShow = PublishSubject.create<Bitmap>()
     private val imageGet = PublishSubject.create<Int>()
+    private val favoriteSubject = PublishSubject.create<Unit>()
     private val currentApiColor get() = colorApiShow.value ?: colorApiBlack
+    private val favoriteList get() = (defaultSharedPref.getObject("favorites", emptyList<ColorApi>()) ?: emptyList()).toMutableList()
     private val history = mutableListOf<ColorApi>()
 
     private lateinit var rxArea: RxArea
@@ -82,9 +84,8 @@ class MainActivity : AppCompatActivity() {
 
         val digits = listOf(zero, one, two, three, four, five, six, seven, eight, nine, A, B, C, D, E, F)
             .map { digit -> digit.clicks().map { digit.text.toString() } }
-        val digitStreams = Observable.merge(digits)
-
-        rxArea = RxArea(defaultSharedPref, back.clicks(), clear.clicks(), digitStreams, disposables, backgroundUpdate, uiShow, colorApiShow)
+        val digitStream = Observable.merge(digits)
+        rxArea = RxArea(defaultSharedPref, back.clicks(), clear.clicks(), digitStream, disposables, backgroundUpdate, uiShow, colorApiShow)
 
         menuOptions
             .clicks()
@@ -120,6 +121,12 @@ class MainActivity : AppCompatActivity() {
             .subscribe(this::moreColorInfo)
             .addTo(disposables)
 
+        favoritesImage
+            .clicks()
+            .map { favoriteList.any { it.name?.value == currentApiColor.name?.value && it.hex?.value == currentApiColor.hex?.value } }
+            .subscribe { if (it) removeFromFavorites(currentApiColor) else addToFavorites(currentApiColor) }
+            .addTo(disposables)
+
         backgroundUpdate
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(this::animateColorChange)
@@ -129,6 +136,10 @@ class MainActivity : AppCompatActivity() {
             .observeOn(AndroidSchedulers.mainThread())
             .subscribeOn(AndroidSchedulers.mainThread())
             .subscribe { hex.text = it }
+            .addTo(disposables)
+
+        uiShow
+            .subscribe { favoriteSubject(Unit) }
             .addTo(disposables)
 
         colorApiShow
@@ -147,6 +158,19 @@ class MainActivity : AppCompatActivity() {
             .filter { it != colorApiBlack }
             .distinct(ColorApi::hex)
             .subscribe { history.addMax(it) }
+            .addTo(disposables)
+
+        colorApiShow
+            .map { Unit }
+            .subscribe(favoriteSubject::invoke)
+            .addTo(disposables)
+
+        favoriteSubject
+            .map { favoriteList.any { it.name?.value ?: "" == currentApiColor.name?.value ?: "" && it.hex?.value == currentApiColor.hex?.value } }
+            .subscribe {
+                favoritesImage.setImageResource(if (it) android.R.drawable.ic_delete else android.R.drawable.ic_input_add)
+                favoritesImageShadow.setImageResource(if (it) android.R.drawable.ic_delete else android.R.drawable.ic_input_add)
+            }
             .addTo(disposables)
 
         imageShow
@@ -203,6 +227,10 @@ class MainActivity : AppCompatActivity() {
                     menuOptionsShadow.setColorFilter(ColorUtils.tintColor(color, true))
                 }
                 .also {
+                    favoritesImage.setColorFilter(ColorUtils.tintColor(color))
+                    favoritesImageShadow.setColorFilter(ColorUtils.tintColor(color, true))
+                }
+                .also {
                     listOf(zero, one, two, three, four, five, six, seven, eight, nine, A, B, C, D, E, F, hex, rgb, back, clear, color_name)
                         .forEach {
                             it.setTextColor(ColorUtils.tintColor(color))
@@ -252,10 +280,19 @@ class MainActivity : AppCompatActivity() {
     private fun Any?.unit() = Unit
 
     private fun addToFavorites(colorApi: ColorApi) {
-        val favorites = (defaultSharedPref.getObject("favorites", emptyList<ColorApi>()) ?: emptyList()).toMutableList()
+        val favorites = favoriteList
         if (favorites.all { it.name?.value != colorApi.name?.value || it.hex?.value != colorApi.hex?.value }) favorites.add(colorApi)
             .also { Toast.makeText(this, "Added to Favorites", Toast.LENGTH_SHORT).show() }
         defaultSharedPref.edit().putObject("favorites", favorites).apply()
+        favoriteSubject(Unit)
+    }
+
+    private fun removeFromFavorites(colorApi: ColorApi) {
+        val favorites = favoriteList
+        if (favorites.removeIf { it.name?.value == colorApi.name?.value && it.hex?.value == colorApi.hex?.value })
+            Toast.makeText(this, "Removed from Favorites", Toast.LENGTH_SHORT).show()
+        defaultSharedPref.edit().putObject("favorites", favorites).apply()
+        favoriteSubject(Unit)
     }
 
     private fun newColor(colorString: String, drop: Int) {
@@ -369,7 +406,7 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("SetTextI18n")
     private fun showFavorites() {
-        val favorites = (defaultSharedPref.getObject<List<ColorApi>>("favorites", null) ?: emptyList()).toMutableList()
+        val favorites = favoriteList
         val view = layoutInflater.inflate(R.layout.favorite_layout, null)
         val adapter = FavoriteAdapter(favorites)
         view.favTitle.text = "Favorites: ${favorites.size}"
@@ -382,6 +419,7 @@ class MainActivity : AppCompatActivity() {
                 ) {
                     super.onSwiped(viewHolder, direction, dragSwipeAdapter)
                     view.favTitle.text = "Favorites: ${adapter.dataList.size}"
+                    favoriteSubject(Unit)
                 }
             }
         )
@@ -400,7 +438,15 @@ class MainActivity : AppCompatActivity() {
         override fun FavHolder.onBind(item: ColorApi, position: Int) {
             itemView.setBackgroundColor(item.hex?.value?.let(Color::parseColor) ?: Color.BLACK)
             name.text = "${position + 1}. ${item.name?.value ?: item.hex?.value}"
-            itemView.setOnClickListener { randomColor(item.hex?.value) }
+            itemView
+                .clicks()
+                .subscribe { randomColor(item.hex?.value) }
+                .addTo(disposables)
+            itemView
+                .longClicks()
+                .map { item }
+                .subscribe(this@MainActivity::moreColorInfo)
+                .addTo(disposables)
         }
     }
 
