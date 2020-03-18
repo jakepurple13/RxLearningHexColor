@@ -17,11 +17,11 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.palette.graphics.Palette
 import androidx.recyclerview.widget.RecyclerView
+import com.airbnb.lottie.LottieAnimationView
 import com.airbnb.lottie.LottieProperty
 import com.airbnb.lottie.model.KeyPath
 import com.davemorrissey.labs.subscaleview.ImageSource
@@ -50,6 +50,7 @@ import kotlinx.android.synthetic.main.favorite_layout.view.*
 import kotlinx.android.synthetic.main.zoom_custom_title.view.*
 import kotlinx.android.synthetic.main.zoom_layout.view.*
 import java.io.File
+import java.io.FileOutputStream
 import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.*
@@ -73,6 +74,11 @@ class MainActivity : AppCompatActivity() {
     private val favoriteCheck: (ColorApi) -> Boolean =
         { it.name?.value ?: "" == currentApiColor.name?.value ?: "" && it.hex?.value == currentApiColor.hex?.value }
 
+    @Suppress("DEPRECATION")
+    private val folderPath = "${Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).absolutePath}/HexColor"
+    private val folderLocation get() = File(folderPath)
+    private val pictureName get() = "JPEG_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())}_"
+
     private lateinit var rxArea: RxArea
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -80,7 +86,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         requestPermissions(Manifest.permission.INTERNET, Manifest.permission.ACCESS_NETWORK_STATE) {
-            if (!it.isGranted) Toast.makeText(this, "Please accept the permissions: ${it.deniedPermissions}", Toast.LENGTH_SHORT).show()
+            if (!it.isGranted) toast("Please accept the permissions: ${it.deniedPermissions}")
         }
 
         val digits = listOf(zero, one, two, three, four, five, six, seven, eight, nine, A, B, C, D, E, F)
@@ -101,8 +107,7 @@ class MainActivity : AppCompatActivity() {
 
         color_name
             .longClicks()
-            .map { currentApiColor }
-            .subscribe(this::addToFavorites)
+            .subscribe { favImage.performClick() }
             .addTo(disposables)
 
         color_name
@@ -153,7 +158,7 @@ class MainActivity : AppCompatActivity() {
         colorApiShow
             .observeOn(AndroidSchedulers.mainThread())
             .subscribeOn(AndroidSchedulers.mainThread())
-            .subscribe { c -> color_name.text = c.name?.value ?: "" }
+            .subscribe { c -> color_name.text = c.name?.value ?: "---" }
             .addTo(disposables)
 
         colorApiShow
@@ -203,8 +208,9 @@ class MainActivity : AppCompatActivity() {
         defaultSharedPref.edit().putObject("history", hist).apply()
     }
 
-    @SuppressLint("ClickableViewAccessibility", "InflateParams")
+    @SuppressLint("ClickableViewAccessibility", "InflateParams", "SimpleDateFormat")
     private fun getImagePixel(bitmap: Bitmap) {
+        folderLocation.apply { if (!exists()) mkdirs() }
         val view = layoutInflater.inflate(R.layout.zoom_layout, null)
         val gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
             override fun onLongPress(e: MotionEvent) {
@@ -228,37 +234,47 @@ class MainActivity : AppCompatActivity() {
             .setCustomTitle(titleView)
             .setView(view)
             .setPositiveButton("Done") { _, _ -> }
-            .whatIf(currentPhotoPath?.isNotEmpty()) { setNeutralButton("Save Photo") { _, _ -> File(currentPhotoPath!!).createNewFile() } }
-            .setOnDismissListener { currentPhotoPath = "" }
+            .whatIf(currentPhotoPath?.isNotEmpty()) {
+                setNeutralButton("Save Photo") { _, _ -> bitmap.saveFile(File(folderPath, "$pictureName.jpg")) }
+            }
+            .setOnDismissListener { currentPhotoPath = null }
             .show()
     }
+
+    private fun Bitmap.saveFile(f: File) {
+        if (!f.exists()) f.createNewFile()
+        val stream = FileOutputStream(f)
+        compress(Bitmap.CompressFormat.JPEG, 100, stream)
+        stream.flush()
+        stream.close()
+        toast("Photo Saved")
+    }
+
+    private fun LottieAnimationView.changeTint(newColor: Int) =
+        addValueCallback(KeyPath("**"), LottieProperty.COLOR_FILTER) { PorterDuffColorFilter(newColor, PorterDuff.Mode.SRC_ATOP) }
 
     private fun animateColorChange(newColor: Int) = colorAnimator((layout.background as ColorDrawable).color, newColor)
         .subscribe { color ->
             layout.setBackgroundColor(color)
                 .also { window.statusBarColor = color }
+                .let { ColorUtils.tintColor(color) to ColorUtils.tintColor(color, true) }
                 .also {
-                    menuOptions.setColorFilter(ColorUtils.tintColor(color))
-                    menuOptionsShadow.setColorFilter(ColorUtils.tintColor(color, true))
+                    menuOptions.setColorFilter(it.first)
+                    menuOptionsShadow.setColorFilter(it.second)
                 }
                 .also {
-                    favImage.addValueCallback(
-                        KeyPath("**"),
-                        LottieProperty.COLOR_FILTER,
-                        { PorterDuffColorFilter(ColorUtils.tintColor(color), PorterDuff.Mode.SRC_ATOP) }
-                    )
-                    favImageShadow.addValueCallback(
-                        KeyPath("**"),
-                        LottieProperty.COLOR_FILTER,
-                        { PorterDuffColorFilter(ColorUtils.tintColor(color, true), PorterDuff.Mode.SRC_ATOP) }
-                    )
+                    swatchHistory.setColorFilter(it.first)
+                    swatchHistoryShadow.setColorFilter(it.second)
                 }
                 .also {
-                    listOf(zero, one, two, three, four, five, six, seven, eight, nine, A, B, C, D, E, F, hex, rgb, back, clear, color_name)
-                        .forEach {
-                            it.setTextColor(ColorUtils.tintColor(color))
-                            it.setShadowLayer(1.6f, 1.5f, 1.3f, ColorUtils.tintColor(color, true))
-                        }
+                    favImage.changeTint(it.first)
+                    favImageShadow.changeTint(it.second)
+                }
+                .also { pair ->
+                    listOf(zero, one, two, three, four, five, six, seven, eight, nine, A, B, C, D, E, F, hex, rgb, back, clear, color_name).forEach {
+                        it.setTextColor(pair.first)
+                        it.setShadowLayer(1.6f, 1.5f, 1.3f, pair.second)
+                    }
                 }
         }
         .addTo(disposables)
@@ -285,19 +301,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun moreColorInfo(colorApi: ColorApi) {
-        MaterialAlertDialogBuilder(this)
-            .setTitle(colorApi.name?.value)
-            .setMessage(
-                "Hex: ${colorApi.hex?.value}\n" +
-                        "RGB: ${colorApi.rgb?.value}\n" +
-                        "CMYK: ${colorApi.cmyk?.value}\n" +
-                        "HSL: ${colorApi.hsl?.value}\n" +
-                        "HSV: ${colorApi.hsv?.value}\n" +
-                        "XYZ: ${colorApi.XYZ?.value}"
-            )
-            .show()
-    }
+    private fun moreColorInfo(colorApi: ColorApi) = MaterialAlertDialogBuilder(this)
+        .setTitle(colorApi.name?.value)
+        .setMessage(
+            "Hex: ${colorApi.hex?.value}\n" +
+                    "RGB: ${colorApi.rgb?.value}\n" +
+                    "CMYK: ${colorApi.cmyk?.value}\n" +
+                    "HSL: ${colorApi.hsl?.value}\n" +
+                    "HSV: ${colorApi.hsv?.value}\n" +
+                    "XYZ: ${colorApi.XYZ?.value}"
+        )
+        .show().unit()
 
     @Suppress("unused")
     private fun Any?.unit() = Unit
@@ -305,15 +319,14 @@ class MainActivity : AppCompatActivity() {
     private fun addToFavorites(colorApi: ColorApi) {
         val favorites = favoriteList
         if (favorites.all { it.name?.value != colorApi.name?.value || it.hex?.value != colorApi.hex?.value }) favorites.add(colorApi)
-            .also { Toast.makeText(this, "Added to Favorites", Toast.LENGTH_SHORT).show() }
+            .also { toast("Added to Favorites") }
         defaultSharedPref.edit().putObject("favorites", favorites).apply()
         favoriteSubject(Unit)
     }
 
     private fun removeFromFavorites(colorApi: ColorApi) {
         val favorites = favoriteList
-        if (favorites.removeIf { it.name?.value == colorApi.name?.value && it.hex?.value == colorApi.hex?.value })
-            Toast.makeText(this, "Removed from Favorites", Toast.LENGTH_SHORT).show()
+        if (favorites.removeIf { it.name?.value == colorApi.name?.value && it.hex?.value == colorApi.hex?.value }) toast("Removed from Favorites")
         defaultSharedPref.edit().putObject("favorites", favorites).apply()
         favoriteSubject(Unit)
     }
@@ -339,8 +352,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
         .show().unit()
-
-    private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
 
     private fun selectImage() {
         val options = arrayOf<CharSequence>("Take Photo", "Choose from Gallery", "Cancel")
@@ -375,12 +386,7 @@ class MainActivity : AppCompatActivity() {
     @Throws(IOException::class)
     private fun createImageFile(): Single<File> = Single.create emitter@{ emitter ->
         try {
-            emitter.onSuccess(
-                File.createTempFile(
-                    "JPEG_${SimpleDateFormat("yyyyMMdd_HHmmss").format(Date())}_", ".jpg",
-                    getExternalFilesDir(Environment.DIRECTORY_PICTURES)
-                )
-            )
+            emitter.onSuccess(File.createTempFile(pictureName, ".jpg", getExternalFilesDir(Environment.DIRECTORY_PICTURES)))
         } catch (e: IOException) {
             emitter.onError(e)
         }
@@ -464,12 +470,8 @@ class MainActivity : AppCompatActivity() {
             name.text = "${position + 1}. ${item.name?.value ?: item.hex?.value}"
             itemView
                 .clicks()
-                .subscribe { randomColor(item.hex?.value) }
-                .addTo(disposables)
-            itemView
-                .longClicks()
-                .map { item }
-                .subscribe(this@MainActivity::moreColorInfo)
+                .map { item.hex?.value }
+                .subscribe(this@MainActivity::randomColor)
                 .addTo(disposables)
         }
     }

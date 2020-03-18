@@ -141,10 +141,12 @@
     <!--Buttons-->
 
     <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/keys"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginHorizontal="8dp"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/shortcutBar"
         app:layout_constraintTop_toBottomOf="@id/color_name">
 
         <TextView
@@ -346,5 +348,52 @@
             app:layout_constraintTop_toBottomOf="@id/five" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!--ShortcutBar-->
+
+    <LinearLayout
+        android:id="@+id/shortcutBar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="@id/keys"
+        app:layout_constraintStart_toStartOf="@id/keys"
+        app:layout_constraintTop_toBottomOf="@id/keys">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:visibility="gone"
+            android:id="@+id/swatchHistoryLayout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+
+            <ImageView
+                android:id="@+id/swatchHistory"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:elevation="1dp"
+                android:src="@android:drawable/ic_menu_gallery"
+                android:tint="#ffffff"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <ImageView
+                android:id="@+id/swatchHistoryShadow"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_marginStart="1.5dp"
+                android:layout_marginTop="1.3dp"
+                android:elevation="1dp"
+                android:src="@android:drawable/ic_menu_recent_history"
+                android:tint="#000000"
+                app:layout_constraintBottom_toBottomOf="@id/swatchHistory"
+                app:layout_constraintEnd_toEndOf="@id/swatchHistory"
+                app:layout_constraintStart_toStartOf="@id/swatchHistory"
+                app:layout_constraintTop_toTopOf="@id/swatchHistory" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
