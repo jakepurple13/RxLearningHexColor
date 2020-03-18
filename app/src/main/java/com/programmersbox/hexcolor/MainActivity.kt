@@ -4,27 +4,20 @@ import android.Manifest
 import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.content.Intent
-import android.graphics.*
+import android.graphics.Color
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffColorFilter
 import android.graphics.drawable.ColorDrawable
-import android.net.Uri
 import android.os.Bundle
-import android.os.Environment
-import android.provider.MediaStore
-import android.view.GestureDetector
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.FileProvider
-import androidx.palette.graphics.Palette
 import androidx.recyclerview.widget.RecyclerView
 import com.airbnb.lottie.LottieAnimationView
 import com.airbnb.lottie.LottieProperty
 import com.airbnb.lottie.model.KeyPath
-import com.davemorrissey.labs.subscaleview.ImageSource
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.jakewharton.rxbinding2.view.clicks
 import com.jakewharton.rxbinding2.view.longClicks
@@ -37,48 +30,31 @@ import com.programmersbox.gsonutils.putObject
 import com.programmersbox.helpfulutils.*
 import com.programmersbox.rxutils.invoke
 import io.reactivex.Observable
-import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.addTo
-import io.reactivex.rxkotlin.subscribeBy
 import io.reactivex.subjects.BehaviorSubject
 import io.reactivex.subjects.PublishSubject
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.favorite_item.view.*
 import kotlinx.android.synthetic.main.favorite_layout.view.*
-import kotlinx.android.synthetic.main.zoom_custom_title.view.*
-import kotlinx.android.synthetic.main.zoom_layout.view.*
-import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
-import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.random.Random
 
 class MainActivity : AppCompatActivity() {
 
-    private val takePhotoRequestID = 5
-    private val pickPhotoRequestID = takePhotoRequestID + 1
-
     private val disposables = CompositeDisposable()
     private val backgroundUpdate = PublishSubject.create<Int>()
     private val uiShow = PublishSubject.create<String>()
     private val colorApiShow = BehaviorSubject.create<ColorApi>()
-    private val imageShow = PublishSubject.create<Bitmap>()
     private val imageGet = PublishSubject.create<Int>()
-    private val favoriteSubject = PublishSubject.create<Unit>()
+    private val favoriteSubject = PublishSubject.create<Boolean>()
     private val currentApiColor get() = colorApiShow.value ?: colorApiBlack
     private val favoriteList get() = (defaultSharedPref.getObject("favorites", emptyList<ColorApi>()) ?: emptyList()).toMutableList()
     private val history get() = (defaultSharedPref.getObject("history", emptyList<ColorApi>()) ?: emptyList()).toMutableList()
     private val favoriteCheck: (ColorApi) -> Boolean =
         { it.name?.value ?: "" == currentApiColor.name?.value ?: "" && it.hex?.value == currentApiColor.hex?.value }
-
-    @Suppress("DEPRECATION")
-    private val folderPath = "${Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).absolutePath}/HexColor"
-    private val folderLocation get() = File(folderPath)
-    private val pictureName get() = "JPEG_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())}_"
-
+    private val photoManager = PhotoManager(imageGet, this, disposables)
     private lateinit var rxArea: RxArea
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -145,7 +121,7 @@ class MainActivity : AppCompatActivity() {
             .addTo(disposables)
 
         uiShow
-            .map { Unit }
+            .map { true }
             .subscribe(favoriteSubject::invoke)
             .addTo(disposables)
 
@@ -168,14 +144,14 @@ class MainActivity : AppCompatActivity() {
             .addTo(disposables)
 
         colorApiShow
-            .map { Unit }
+            .map { true }
             .subscribe(favoriteSubject::invoke)
             .addTo(disposables)
 
         favoriteSubject
             .observeOn(AndroidSchedulers.mainThread())
             .subscribeOn(AndroidSchedulers.mainThread())
-            .map { favoriteList.any(favoriteCheck) && rxArea.getCurrentHex().length == 7 }
+            .map { favoriteList.any(favoriteCheck) && rxArea.getCurrentHex().length == 7 && it }
             .map { if (it) 0f to 1f else 1f to 0f }
             .map { ValueAnimator.ofFloat(it.first, it.second) }
             .subscribe {
@@ -185,10 +161,6 @@ class MainActivity : AppCompatActivity() {
                 }
                 it.start()
             }
-            .addTo(disposables)
-
-        imageShow
-            .subscribe(this::getImagePixel)
             .addTo(disposables)
 
         imageGet
@@ -206,48 +178,6 @@ class MainActivity : AppCompatActivity() {
         val hist = history
         hist.addMax(colorApi)
         defaultSharedPref.edit().putObject("history", hist).apply()
-    }
-
-    @SuppressLint("ClickableViewAccessibility", "InflateParams", "SimpleDateFormat")
-    private fun getImagePixel(bitmap: Bitmap) {
-        folderLocation.apply { if (!exists()) mkdirs() }
-        val view = layoutInflater.inflate(R.layout.zoom_layout, null)
-        val gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
-            override fun onLongPress(e: MotionEvent) {
-                if (view.zoomImage.isReady) {
-                    val sCoord: PointF = view.zoomImage.viewToSourceCoord(e.x, e.y)!!
-                    val pixel = bitmap.getPixel(sCoord.x.toInt(), sCoord.y.toInt())
-                    imageGet(pixel)
-                }
-            }
-        })
-
-        view.zoomImage.setImage(ImageSource.bitmap(bitmap))
-        view.zoomImage.setOnTouchListener { _, motionEvent -> gestureDetector.onTouchEvent(motionEvent) }
-
-        val titleView = layoutInflater.inflate(R.layout.zoom_custom_title, null)
-        val palette = Palette.from(bitmap).generate()
-        palette.dominantSwatch?.titleTextColor?.let { titleView.titleText.setTextColor(it) }
-        palette.dominantSwatch?.rgb?.let { titleView.zoomTitleBackground.setBackgroundColor(it) }
-
-        MaterialAlertDialogBuilder(this)
-            .setCustomTitle(titleView)
-            .setView(view)
-            .setPositiveButton("Done") { _, _ -> }
-            .whatIf(currentPhotoPath?.isNotEmpty()) {
-                setNeutralButton("Save Photo") { _, _ -> bitmap.saveFile(File(folderPath, "$pictureName.jpg")) }
-            }
-            .setOnDismissListener { currentPhotoPath = null }
-            .show()
-    }
-
-    private fun Bitmap.saveFile(f: File) {
-        if (!f.exists()) f.createNewFile()
-        val stream = FileOutputStream(f)
-        compress(Bitmap.CompressFormat.JPEG, 100, stream)
-        stream.flush()
-        stream.close()
-        toast("Photo Saved")
     }
 
     private fun LottieAnimationView.changeTint(newColor: Int) =
@@ -290,7 +220,7 @@ class MainActivity : AppCompatActivity() {
     enum class MenuOptions(private val info: String) {
         ADD("Add to favorites"),
         RANDOM("Random Color"),
-        VIEW("View Favorites"),
+        VIEW_FAVORITES("View Favorites"),
         MORE_INFO("More Info"),
         SELECT_IMAGE("Pick a color from a picture"),
         VIEW_HISTORY("View History");
@@ -321,14 +251,14 @@ class MainActivity : AppCompatActivity() {
         if (favorites.all { it.name?.value != colorApi.name?.value || it.hex?.value != colorApi.hex?.value }) favorites.add(colorApi)
             .also { toast("Added to Favorites") }
         defaultSharedPref.edit().putObject("favorites", favorites).apply()
-        favoriteSubject(Unit)
+        favoriteSubject(true)
     }
 
     private fun removeFromFavorites(colorApi: ColorApi) {
         val favorites = favoriteList
         if (favorites.removeIf { it.name?.value == colorApi.name?.value && it.hex?.value == colorApi.hex?.value }) toast("Removed from Favorites")
         defaultSharedPref.edit().putObject("favorites", favorites).apply()
-        favoriteSubject(Unit)
+        favoriteSubject(true)
     }
 
     private fun newColor(colorString: String, drop: Int) {
@@ -345,117 +275,42 @@ class MainActivity : AppCompatActivity() {
             when (MenuOptions.values()[i]) {
                 MenuOptions.ADD -> addToFavorites(colorApi)
                 MenuOptions.RANDOM -> randomColor()
-                MenuOptions.VIEW -> showFavorites()
+                MenuOptions.VIEW_FAVORITES -> showFavoritesOrHistory(favoriteList, true)//showFavorites()
                 MenuOptions.MORE_INFO -> moreColorInfo(colorApi)
-                MenuOptions.SELECT_IMAGE -> selectImage()
-                MenuOptions.VIEW_HISTORY -> showHistory()
+                MenuOptions.SELECT_IMAGE -> photoManager.selectImage()
+                MenuOptions.VIEW_HISTORY -> showFavoritesOrHistory(history, false)//showHistory()
             }
         }
         .show().unit()
 
-    private fun selectImage() {
-        val options = arrayOf<CharSequence>("Take Photo", "Choose from Gallery", "Cancel")
-        MaterialAlertDialogBuilder(this)
-            .setTitle("Take a picture from")
-            .setItems(options) { dialog, item ->
-                when (options[item]) {
-                    "Take Photo" -> requestPermissions(
-                        Manifest.permission.CAMERA,
-                        Manifest.permission.READ_EXTERNAL_STORAGE,
-                        Manifest.permission.WRITE_EXTERNAL_STORAGE
-                    ) { if (it.isGranted) dispatchTakePictureIntent() else toast("Please accept the permissions in order to take a photo") }
-                    "Choose from Gallery" -> requestPermissions(
-                        Manifest.permission.READ_EXTERNAL_STORAGE,
-                        Manifest.permission.WRITE_EXTERNAL_STORAGE
-                    ) { if (it.isGranted) pickPhoto() else toast("Please accept the permissions in order to pick a photo") }
-                    "Cancel" -> dialog.dismiss()
-                }
-            }
-            .show()
-    }
-
-    private fun pickPhoto() {
-        val photoPickerIntent = Intent(Intent.ACTION_PICK)
-        photoPickerIntent.type = "image/*"
-        startActivityForResult(photoPickerIntent, pickPhotoRequestID)
-    }
-
-    private var currentPhotoPath: String? = null
-
-    @SuppressLint("SimpleDateFormat")
-    @Throws(IOException::class)
-    private fun createImageFile(): Single<File> = Single.create emitter@{ emitter ->
-        try {
-            emitter.onSuccess(File.createTempFile(pictureName, ".jpg", getExternalFilesDir(Environment.DIRECTORY_PICTURES)))
-        } catch (e: IOException) {
-            emitter.onError(e)
-        }
-    }
-
-    private fun startPictureIntent(file: File, takePictureIntent: Intent) {
-        currentPhotoPath = file.absolutePath
-        val photoURI: Uri = FileProvider.getUriForFile(this, "com.example.android.fileprovider", file)
-        takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
-        startActivityForResult(takePictureIntent, takePhotoRequestID)
-    }
-
-    private fun dispatchTakePictureIntent() = Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takePictureIntent ->
-        takePictureIntent.resolveActivity(packageManager)?.also {
-            createImageFile()
-                .subscribeBy(
-                    onError = { toast("Something went wrong, please try again") },
-                    onSuccess = { startPictureIntent(it, takePictureIntent) }
-                )
-                .addTo(disposables)
-        }
-    }.unit()
-
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (resultCode != Activity.RESULT_CANCELED) {
-            when (requestCode) {
-                takePhotoRequestID -> if (resultCode == Activity.RESULT_OK && data != null) imageShow(BitmapFactory.decodeFile(currentPhotoPath!!))
-                pickPhotoRequestID -> if (resultCode == Activity.RESULT_OK && data?.data != null)
-                    imageShow(BitmapFactory.decodeStream(contentResolver.openInputStream(data.data!!)))
-            }
-        }
+        photoManager.onActivityResult(requestCode, resultCode, data)
     }
 
     @SuppressLint("SetTextI18n")
-    private fun showHistory() {
+    private fun showFavoritesOrHistory(list: MutableList<ColorApi>, isFavorite: Boolean) {
         val view = layoutInflater.inflate(R.layout.favorite_layout, null)
-        val adapter = FavoriteAdapter(history)
-        view.favTitle.text = "History: ${history.size}"
+        val adapter = FavoriteAdapter(list)
+        view.favTitle.text = "${if (isFavorite) "Favorites" else "History"}: ${list.size}"
         view.favoriteRV.adapter = adapter
-        MaterialAlertDialogBuilder(this)
-            .setView(view)
-            .setPositiveButton("Done") { d, _ -> d.dismiss() }
-            .show()
-    }
-
-    @SuppressLint("SetTextI18n")
-    private fun showFavorites() {
-        val favorites = favoriteList
-        val view = layoutInflater.inflate(R.layout.favorite_layout, null)
-        val adapter = FavoriteAdapter(favorites)
-        view.favTitle.text = "Favorites: ${favorites.size}"
-        view.favoriteRV.adapter = adapter
-        DragSwipeUtils.setDragSwipeUp(
-            adapter, view.favoriteRV, listOf(Direction.UP, Direction.DOWN), listOf(Direction.START, Direction.END),
-            object : DragSwipeActions<ColorApi, FavHolder> {
-                override fun onSwiped(
-                    viewHolder: RecyclerView.ViewHolder, direction: Direction, dragSwipeAdapter: DragSwipeAdapter<ColorApi, FavHolder>
-                ) {
-                    super.onSwiped(viewHolder, direction, dragSwipeAdapter)
-                    view.favTitle.text = "Favorites: ${adapter.dataList.size}"
-                    favoriteSubject(Unit)
+        if (isFavorite)
+            DragSwipeUtils.setDragSwipeUp(
+                adapter, view.favoriteRV, listOf(Direction.UP, Direction.DOWN), listOf(Direction.START, Direction.END),
+                object : DragSwipeActions<ColorApi, FavHolder> {
+                    override fun onSwiped(
+                        viewHolder: RecyclerView.ViewHolder, direction: Direction, dragSwipeAdapter: DragSwipeAdapter<ColorApi, FavHolder>
+                    ) {
+                        super.onSwiped(viewHolder, direction, dragSwipeAdapter)
+                        view.favTitle.text = "Favorites: ${adapter.dataList.size}"
+                        favoriteSubject(adapter.dataList.any(favoriteCheck))
+                    }
                 }
-            }
-        )
+            )
         MaterialAlertDialogBuilder(this)
             .setView(view)
             .setPositiveButton("Done") { d, _ -> d.dismiss() }
-            .setOnDismissListener { defaultSharedPref.edit().putObject("favorites", adapter.dataList).apply() }
+            .whatIf(isFavorite) { setOnDismissListener { defaultSharedPref.edit().putObject("favorites", adapter.dataList).apply() } }
             .show()
     }
 
