@@ -28,18 +28,22 @@
 
     <com.airbnb.lottie.LottieAnimationView
         android:id="@+id/favImage"
+        style="@style/ColorText.Digit"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:elevation="1dp"
-        app:layout_constraintBottom_toBottomOf="@id/favoritesImage"
-        app:layout_constraintEnd_toEndOf="@id/favoritesImage"
-        app:layout_constraintStart_toStartOf="@id/favoritesImage"
-        app:layout_constraintTop_toTopOf="@id/favoritesImage"
+        app:layout_constraintBottom_toBottomOf="@id/hex"
+        app:layout_constraintEnd_toEndOf="@id/firstItem"
+        app:layout_constraintStart_toStartOf="@id/rgb"
+        app:layout_constraintTop_toTopOf="@id/hex"
         app:lottie_loop="true"
-        app:lottie_rawRes="@raw/plus_to_x" />
+        app:lottie_rawRes="@raw/plus_to_x"
+        tools:src="@android:drawable/ic_input_add"
+        tools:tint="#ffffff" />
 
     <com.airbnb.lottie.LottieAnimationView
         android:id="@+id/favImageShadow"
+        style="@style/ColorText.Digit"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginStart="1.5dp"
@@ -51,34 +55,28 @@
         app:layout_constraintTop_toTopOf="@id/favImage"
         app:lottie_loop="true"
         app:lottie_rawRes="@raw/plus_to_x"
-        tools:ignore="ContentDescription" />
-
-    <ImageView
-        android:id="@+id/favoritesImage"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:elevation="1dp"
-        android:src="@android:drawable/ic_input_add"
-        android:visibility="invisible"
-        app:layout_constraintBottom_toBottomOf="@id/menuOptions"
-        app:layout_constraintStart_toStartOf="@id/rgb"
-        app:layout_constraintTop_toTopOf="@id/hex"
-        tools:ignore="ContentDescription" />
+        tools:ignore="ContentDescription"
+        tools:src="@android:drawable/ic_input_add"
+        tools:tint="#ffffff" />
 
     <ImageView
         android:id="@+id/menuOptions"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:elevation="1dp"
+        android:clickable="true"
+        android:background="?selectableItemBackgroundBorderless"
         android:src="@drawable/baseline_menu_white_18dp"
+        app:layout_constraintBottom_toBottomOf="@id/hex"
         app:layout_constraintEnd_toEndOf="@id/color_name"
+        app:layout_constraintStart_toStartOf="@id/lastItem"
         app:layout_constraintTop_toTopOf="@id/hex"
         tools:ignore="ContentDescription" />
 
     <ImageView
         android:id="@+id/menuOptionsShadow"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:layout_marginStart="1.5dp"
         android:layout_marginTop="1.3dp"
         android:src="@drawable/baseline_menu_white_18dp"
@@ -359,13 +357,14 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="@id/keys"
         app:layout_constraintStart_toStartOf="@id/keys"
-        app:layout_constraintTop_toBottomOf="@id/keys">
+        app:layout_constraintTop_toBottomOf="@id/keys"
+        tools:ignore="ContentDescription">
 
         <androidx.constraintlayout.widget.ConstraintLayout
-            android:visibility="gone"
             android:id="@+id/swatchHistoryLayout"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:visibility="gone">
 
             <ImageView
                 android:id="@+id/swatchHistory"
@@ -395,5 +394,49 @@
 
 
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/firstItem"
+        style="@style/ColorText.Digit"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:text="D"
+        android:visibility="invisible"
+        app:layout_constraintEnd_toStartOf="@id/secondItem"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/secondItem"
+        style="@style/ColorText.Digit"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:text="D"
+        android:visibility="invisible"
+        app:layout_constraintEnd_toStartOf="@id/thirdItem"
+        app:layout_constraintStart_toEndOf="@id/firstItem"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/thirdItem"
+        style="@style/ColorText.Digit"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:text="D"
+        android:visibility="invisible"
+        app:layout_constraintEnd_toStartOf="@id/lastItem"
+        app:layout_constraintStart_toEndOf="@id/secondItem"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/lastItem"
+        style="@style/ColorText.Digit"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:text="D"
+        android:visibility="invisible"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/thirdItem"
+        app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

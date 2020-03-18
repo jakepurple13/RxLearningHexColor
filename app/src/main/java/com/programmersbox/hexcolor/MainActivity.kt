@@ -152,8 +152,8 @@ class MainActivity : AppCompatActivity() {
             .observeOn(AndroidSchedulers.mainThread())
             .subscribeOn(AndroidSchedulers.mainThread())
             .map { favoriteList.any(favoriteCheck) && rxArea.getCurrentHex().length == 7 && it }
-            .map { if (it) 0f to 1f else 1f to 0f }
-            .map { ValueAnimator.ofFloat(it.first, it.second) }
+            .map { if (it) 1f else 0f }
+            .map { ValueAnimator.ofFloat(favImage.progress, it) }
             .subscribe {
                 it.addUpdateListener { animation: ValueAnimator ->
                     favImage.progress = animation.animatedValue as Float
@@ -275,10 +275,10 @@ class MainActivity : AppCompatActivity() {
             when (MenuOptions.values()[i]) {
                 MenuOptions.ADD -> addToFavorites(colorApi)
                 MenuOptions.RANDOM -> randomColor()
-                MenuOptions.VIEW_FAVORITES -> showFavoritesOrHistory(favoriteList, true)//showFavorites()
+                MenuOptions.VIEW_FAVORITES -> showFavoritesOrHistory(favoriteList, true)
                 MenuOptions.MORE_INFO -> moreColorInfo(colorApi)
                 MenuOptions.SELECT_IMAGE -> photoManager.selectImage()
-                MenuOptions.VIEW_HISTORY -> showFavoritesOrHistory(history, false)//showHistory()
+                MenuOptions.VIEW_HISTORY -> showFavoritesOrHistory(history, false)
             }
         }
         .show().unit()
