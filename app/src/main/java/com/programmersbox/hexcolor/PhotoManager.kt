@@ -16,6 +16,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.palette.graphics.Palette
 import com.davemorrissey.labs.subscaleview.ImageSource
+import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
+import com.github.florent37.inlineactivityresult.rx.RxInlineActivityResult
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.programmersbox.helpfulutils.requestPermissions
 import com.programmersbox.helpfulutils.whatIf
@@ -56,32 +58,32 @@ class PhotoManager(
             .addTo(disposables)
     }
 
-    fun selectImage() {
-        val options = arrayOf<CharSequence>("Take Photo", "Choose from Gallery", "Cancel")
-        MaterialAlertDialogBuilder(activity)
-            .setTitle("Take a picture from")
-            .setItems(options) { dialog, item ->
-                when (options[item]) {
-                    "Take Photo" -> activity.requestPermissions(
-                        Manifest.permission.CAMERA,
-                        Manifest.permission.READ_EXTERNAL_STORAGE,
-                        Manifest.permission.WRITE_EXTERNAL_STORAGE
-                    ) { if (it.isGranted) dispatchTakePictureIntent() else activity.toast("Please accept the permissions in order to take a photo") }
-                    "Choose from Gallery" -> activity.requestPermissions(
-                        Manifest.permission.READ_EXTERNAL_STORAGE,
-                        Manifest.permission.WRITE_EXTERNAL_STORAGE
-                    ) { if (it.isGranted) pickPhoto() else activity.toast("Please accept the permissions in order to pick a photo") }
-                    "Cancel" -> dialog.dismiss()
-                }
-            }
-            .show()
-    }
+    private enum class ImageOptions(val text: CharSequence) { TAKE_PHOTO("Take Photo"), GALLERY("Choose from Gallery"), CANCEL("Cancel") }
 
-    private fun pickPhoto() {
-        val photoPickerIntent = Intent(Intent.ACTION_PICK)
-        photoPickerIntent.type = "image/*"
-        activity.startActivityForResult(photoPickerIntent, pickPhotoRequestID)
-    }
+    fun selectImage() = MaterialAlertDialogBuilder(activity)
+        .setTitle("Take a picture from")
+        .setItems(ImageOptions.values().map(ImageOptions::text).toTypedArray()) { dialog, item ->
+            when (ImageOptions.values()[item]) {
+                ImageOptions.TAKE_PHOTO -> activity.requestPermissions(
+                    Manifest.permission.CAMERA,
+                    Manifest.permission.READ_EXTERNAL_STORAGE,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                ) { if (it.isGranted) dispatchTakePictureIntent() else activity.toast("Please accept the permissions in order to take a photo") }
+                ImageOptions.GALLERY -> activity.requestPermissions(
+                    Manifest.permission.READ_EXTERNAL_STORAGE,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                ) { if (it.isGranted) pickPhoto() else activity.toast("Please accept the permissions in order to pick a photo") }
+                ImageOptions.CANCEL -> dialog.dismiss()
+            }
+        }
+        .show().let { Unit }
+
+    private fun pickPhoto() = RxInlineActivityResult(activity)
+        .requestAsSingle(Intent(Intent.ACTION_PICK).apply { type = "image/*" })
+        .doOnSuccess { onActivityResult(pickPhotoRequestID, it.resultCode, it.data) }
+        .doOnError { activity.toast("Something went wrong") }
+        .subscribe()
+        .addTo(disposables)
 
     private fun dispatchTakePictureIntent() = Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takePictureIntent ->
         takePictureIntent.resolveActivity(activity.packageManager)?.also {
@@ -107,7 +109,12 @@ class PhotoManager(
         currentPhotoPath = file.absolutePath
         val photoURI: Uri = FileProvider.getUriForFile(activity, "com.example.android.fileprovider", file)
         takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
-        activity.startActivityForResult(takePictureIntent, takePhotoRequestID)
+        RxInlineActivityResult(activity)
+            .requestAsSingle(takePictureIntent)
+            .doOnSuccess { onActivityResult(takePhotoRequestID, it.resultCode, it.data) }
+            .doOnError { activity.toast("Something went wrong") }
+            .subscribe()
+            .addTo(disposables)
     }
 
     @SuppressLint("ClickableViewAccessibility", "InflateParams")
@@ -124,6 +131,7 @@ class PhotoManager(
             }
         })
 
+        if (bitmap.width > bitmap.height) view.zoomImage.orientation = SubsamplingScaleImageView.ORIENTATION_90
         view.zoomImage.setImage(ImageSource.bitmap(bitmap))
         view.zoomImage.setOnTouchListener { _, motionEvent -> gestureDetector.onTouchEvent(motionEvent) }
 
@@ -152,7 +160,7 @@ class PhotoManager(
         activity.toast("Photo Saved")
     }
 
-    fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    private fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (resultCode != Activity.RESULT_CANCELED) {
             when (requestCode) {
                 takePhotoRequestID -> if (resultCode == Activity.RESULT_OK && data != null) imageShow(BitmapFactory.decodeFile(currentPhotoPath!!))

@@ -4,7 +4,6 @@ import android.Manifest
 import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
-import android.content.Intent
 import android.graphics.Color
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
@@ -282,11 +281,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
         .show().unit()
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        photoManager.onActivityResult(requestCode, resultCode, data)
-    }
 
     @SuppressLint("SetTextI18n")
     private fun showFavoritesOrHistory(list: MutableList<ColorApi>, isFavorite: Boolean) {

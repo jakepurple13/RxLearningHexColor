@@ -60,4 +60,5 @@ dependencies {
     implementation 'com.davemorrissey.labs:subsampling-scale-image-view:3.10.0'
     implementation 'com.github.pwittchen:reactivenetwork-rx2:3.0.7'
     implementation "com.airbnb.android:lottie:3.4.0"
+    implementation 'com.github.florent37:inline-activity-result-rx:1.0.3'
 }
