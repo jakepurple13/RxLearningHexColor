@@ -12,11 +12,13 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.view.GestureDetector
 import android.view.MotionEvent
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.palette.graphics.Palette
 import com.davemorrissey.labs.subscaleview.ImageSource
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
+import com.github.florent37.inlineactivityresult.Result
 import com.github.florent37.inlineactivityresult.rx.RxInlineActivityResult
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.programmersbox.helpfulutils.requestPermissions
@@ -60,7 +62,7 @@ class PhotoManager(
 
     private enum class ImageOptions(val text: CharSequence) { TAKE_PHOTO("Take Photo"), GALLERY("Choose from Gallery"), CANCEL("Cancel") }
 
-    fun selectImage() = MaterialAlertDialogBuilder(activity)
+    fun selectImage(): AlertDialog = MaterialAlertDialogBuilder(activity)
         .setTitle("Take a picture from")
         .setItems(ImageOptions.values().map(ImageOptions::text).toTypedArray()) { dialog, item ->
             when (ImageOptions.values()[item]) {
@@ -76,13 +78,14 @@ class PhotoManager(
                 ImageOptions.CANCEL -> dialog.dismiss()
             }
         }
-        .show().let { Unit }
+        .show()
+
+    private fun onResult(requestCode: Int): (Result) -> Unit = { onActivityResult(requestCode, it.resultCode, it.data) }
+    private val onError: (Throwable) -> Unit = { if (it is RxInlineActivityResult.Error) activity.toast("Something went wrong") }
 
     private fun pickPhoto() = RxInlineActivityResult(activity)
         .requestAsSingle(Intent(Intent.ACTION_PICK).apply { type = "image/*" })
-        .doOnSuccess { onActivityResult(pickPhotoRequestID, it.resultCode, it.data) }
-        .doOnError { activity.toast("Something went wrong") }
-        .subscribe()
+        .subscribe(onResult(pickPhotoRequestID), onError)
         .addTo(disposables)
 
     private fun dispatchTakePictureIntent() = Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takePictureIntent ->
@@ -94,7 +97,7 @@ class PhotoManager(
                 )
                 .addTo(disposables)
         }
-    }.let { Unit }
+    }
 
     @Throws(IOException::class)
     private fun createImageFile(): Single<File> = Single.create emitter@{ emitter ->
@@ -111,9 +114,7 @@ class PhotoManager(
         takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
         RxInlineActivityResult(activity)
             .requestAsSingle(takePictureIntent)
-            .doOnSuccess { onActivityResult(takePhotoRequestID, it.resultCode, it.data) }
-            .doOnError { activity.toast("Something went wrong") }
-            .subscribe()
+            .subscribe(onResult(takePhotoRequestID), onError)
             .addTo(disposables)
     }
 
