@@ -119,38 +119,37 @@ class PhotoManager(
     }
 
     @SuppressLint("ClickableViewAccessibility", "InflateParams")
-    private fun getImagePixel(bitmap: Bitmap) {
-        folderLocation.apply { if (!exists()) mkdirs() }
-        val view = activity.layoutInflater.inflate(R.layout.zoom_layout, null)
-        val gestureDetector = GestureDetector(activity, object : GestureDetector.SimpleOnGestureListener() {
-            override fun onLongPress(e: MotionEvent) {
-                if (view.zoomImage.isReady) {
-                    val sCoord: PointF = view.zoomImage.viewToSourceCoord(e.x, e.y)!!
-                    val pixel = bitmap.getPixel(sCoord.x.toInt(), sCoord.y.toInt())
-                    imageGet(pixel)
+    private fun getImagePixel(bitmap: Bitmap) = MaterialAlertDialogBuilder(activity)
+        .setCustomTitle(R.layout.zoom_custom_title) {
+            Palette.from(bitmap).generate().dominantSwatch?.let {
+                titleText.setTextColor(it.titleTextColor)
+                zoomTitleBackground.setBackgroundColor(it.rgb)
+            }
+        }
+        .setView(R.layout.zoom_layout) {
+            val gestureDetector = GestureDetector(activity, object : GestureDetector.SimpleOnGestureListener() {
+                override fun onLongPress(e: MotionEvent) {
+                    if (zoomImage.isReady) {
+                        val sCoord: PointF = zoomImage.viewToSourceCoord(e.x, e.y)!!
+                        val pixel = bitmap.getPixel(sCoord.x.toInt(), sCoord.y.toInt())
+                        imageGet(pixel)
+                    }
                 }
+            })
+
+            if (bitmap.width > bitmap.height) zoomImage.orientation = SubsamplingScaleImageView.ORIENTATION_90
+            zoomImage.setImage(ImageSource.bitmap(bitmap))
+            zoomImage.setOnTouchListener { _, motionEvent -> gestureDetector.onTouchEvent(motionEvent) }
+        }
+        .setPositiveButton("Done") { _, _ -> }
+        .whatIf(currentPhotoPath?.isNotEmpty()) {
+            setNeutralButton("Save Photo") { _, _ ->
+                folderLocation.apply { if (!exists()) mkdirs() }
+                bitmap.saveFile(File(folderPath, "$pictureName.jpg"))
             }
-        })
-
-        if (bitmap.width > bitmap.height) view.zoomImage.orientation = SubsamplingScaleImageView.ORIENTATION_90
-        view.zoomImage.setImage(ImageSource.bitmap(bitmap))
-        view.zoomImage.setOnTouchListener { _, motionEvent -> gestureDetector.onTouchEvent(motionEvent) }
-
-        val titleView = activity.layoutInflater.inflate(R.layout.zoom_custom_title, null)
-        val palette = Palette.from(bitmap).generate()
-        palette.dominantSwatch?.titleTextColor?.let { titleView.titleText.setTextColor(it) }
-        palette.dominantSwatch?.rgb?.let { titleView.zoomTitleBackground.setBackgroundColor(it) }
-
-        MaterialAlertDialogBuilder(activity)
-            .setCustomTitle(titleView)
-            .setView(view)
-            .setPositiveButton("Done") { _, _ -> }
-            .whatIf(currentPhotoPath?.isNotEmpty()) {
-                setNeutralButton("Save Photo") { _, _ -> bitmap.saveFile(File(folderPath, "$pictureName.jpg")) }
-            }
-            .setOnDismissListener { currentPhotoPath = null }
-            .show()
-    }
+        }
+        .setOnDismissListener { currentPhotoPath = null }
+        .show().let { Unit }
 
     private fun Bitmap.saveFile(f: File) {
         if (!f.exists()) f.createNewFile()
