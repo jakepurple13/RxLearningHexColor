@@ -1,6 +1,7 @@
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
+apply plugin: 'kotlin-kapt'
 
 android {
     compileSdkVersion 29
@@ -42,13 +43,15 @@ dependencies {
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test.ext:junit:1.1.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
-    def jakepurple13 = "3.5"
+    def jakepurple13 = "5.4"
     implementation "com.github.jakepurple13.HelpfulTools:flowutils:$jakepurple13"
     implementation "com.github.jakepurple13.HelpfulTools:gsonutils:$jakepurple13"
     implementation "com.github.jakepurple13.HelpfulTools:helpfulutils:$jakepurple13"
     implementation "com.github.jakepurple13.HelpfulTools:loggingutils:$jakepurple13"
     implementation "com.github.jakepurple13.HelpfulTools:rxutils:$jakepurple13"
     implementation "com.github.jakepurple13.HelpfulTools:dragswipe:$jakepurple13"
+    implementation "com.github.jakepurple13.HelpfulTools:dslannotations:$jakepurple13"
+    kapt "com.github.jakepurple13.HelpfulTools:dslprocessor:$jakepurple13"
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.3'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.3.3'
     implementation "io.reactivex.rxjava2:rxkotlin:2.2.0"

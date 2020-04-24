@@ -48,11 +48,19 @@ class MainActivity : AppCompatActivity() {
     private val colorApiShow = BehaviorSubject.create<ColorApi>()
     private val imageGet = PublishSubject.create<Int>()
     private val favoriteSubject = PublishSubject.create<Boolean>()
+
     private val currentApiColor get() = colorApiShow.value ?: colorApiBlack
-    private val favoriteList get() = (defaultSharedPref.getObject("favorites", emptyList<ColorApi>()) ?: emptyList()).toMutableList()
-    private val history get() = (defaultSharedPref.getObject("history", emptyList<ColorApi>()) ?: emptyList()).toMutableList()
+
+    private var favoriteList
+        get() = (defaultSharedPref.getObject("favorites", emptyList<ColorApi>()) ?: emptyList()).toMutableList()
+        set(value) = defaultSharedPref.edit().putObject("favorites", value).apply()
+    private var history
+        get() = (defaultSharedPref.getObject("history", emptyList<ColorApi>()) ?: emptyList()).toMutableList()
+        set(value) = defaultSharedPref.edit().putObject("history", value).apply()
+
     private val favoriteCheck: (ColorApi) -> Boolean =
         { it.name?.value ?: "" == currentApiColor.name?.value ?: "" && it.hex?.value == currentApiColor.hex?.value }
+
     private val photoManager = PhotoManager(imageGet, this, disposables)
     private lateinit var rxArea: RxArea
 
@@ -176,7 +184,7 @@ class MainActivity : AppCompatActivity() {
     private fun addToHistory(colorApi: ColorApi) {
         val hist = history
         hist.addMax(colorApi)
-        defaultSharedPref.edit().putObject("history", hist).apply()
+        history = hist
     }
 
     private fun LottieAnimationView.changeTint(newColor: Int) =
@@ -190,10 +198,6 @@ class MainActivity : AppCompatActivity() {
                 .also {
                     menuOptions.setColorFilter(it.first)
                     menuOptionsShadow.setColorFilter(it.second)
-                }
-                .also {
-                    swatchHistory.setColorFilter(it.first)
-                    swatchHistoryShadow.setColorFilter(it.second)
                 }
                 .also {
                     favImage.changeTint(it.first)
@@ -249,14 +253,14 @@ class MainActivity : AppCompatActivity() {
         val favorites = favoriteList
         if (favorites.all { it.name?.value != colorApi.name?.value || it.hex?.value != colorApi.hex?.value }) favorites.add(colorApi)
             .also { toast("Added to Favorites") }
-        defaultSharedPref.edit().putObject("favorites", favorites).apply()
+        favoriteList = favorites
         favoriteSubject(true)
     }
 
     private fun removeFromFavorites(colorApi: ColorApi) {
         val favorites = favoriteList
         if (favorites.removeIf { it.name?.value == colorApi.name?.value && it.hex?.value == colorApi.hex?.value }) toast("Removed from Favorites")
-        defaultSharedPref.edit().putObject("favorites", favorites).apply()
+        favoriteList = favorites
         favoriteSubject(true)
     }
 
@@ -270,8 +274,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun showMenu(colorApi: ColorApi) = MaterialAlertDialogBuilder(this)
         .setTitle("Options")
-        .setItems(MenuOptions.values().map { it.data(colorApi) }.toTypedArray()) { _, i ->
-            when (MenuOptions.values()[i]) {
+        .setEnumItems(MenuOptions.values().map { it.data(colorApi) }.toTypedArray()) { item: MenuOptions, _ ->
+            when (item) {
                 MenuOptions.ADD -> addToFavorites(colorApi)
                 MenuOptions.RANDOM -> randomColor()
                 MenuOptions.VIEW_FAVORITES -> showFavoritesOrHistory(favoriteList, true)
@@ -291,9 +295,9 @@ class MainActivity : AppCompatActivity() {
         if (isFavorite)
             DragSwipeUtils.setDragSwipeUp(
                 adapter, view.favoriteRV, listOf(Direction.UP, Direction.DOWN), listOf(Direction.START, Direction.END),
-                object : DragSwipeActions<ColorApi, FavHolder> {
+                object : DragSwipeActions<ColorApi> {
                     override fun onSwiped(
-                        viewHolder: RecyclerView.ViewHolder, direction: Direction, dragSwipeAdapter: DragSwipeAdapter<ColorApi, FavHolder>
+                        viewHolder: RecyclerView.ViewHolder, direction: Direction, dragSwipeAdapter: DragSwipeAdapter<ColorApi, *>
                     ) {
                         super.onSwiped(viewHolder, direction, dragSwipeAdapter)
                         view.favTitle.text = "Favorites: ${adapter.dataList.size}"
@@ -304,7 +308,7 @@ class MainActivity : AppCompatActivity() {
         MaterialAlertDialogBuilder(this)
             .setView(view)
             .setPositiveButton("Done") { d, _ -> d.dismiss() }
-            .whatIf(isFavorite) { setOnDismissListener { defaultSharedPref.edit().putObject("favorites", adapter.dataList).apply() } }
+            .whatIf(isFavorite) { setOnDismissListener { favoriteList = adapter.dataList } }
             .show()
     }
 
