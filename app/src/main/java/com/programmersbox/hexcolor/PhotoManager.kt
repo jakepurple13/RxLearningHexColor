@@ -6,6 +6,7 @@ import android.app.Activity
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.graphics.PointF
 import android.net.Uri
 import android.os.Environment
@@ -17,7 +18,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.palette.graphics.Palette
 import com.davemorrissey.labs.subscaleview.ImageSource
-import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
 import com.github.florent37.inlineactivityresult.Result
 import com.github.florent37.inlineactivityresult.rx.RxInlineActivityResult
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -118,6 +118,11 @@ class PhotoManager(
             .addTo(disposables)
     }
 
+    private fun Bitmap.rotate(degrees: Float): Bitmap {
+        val matrix = Matrix().apply { postRotate(degrees) }
+        return Bitmap.createBitmap(this, 0, 0, width, height, matrix, true)
+    }
+
     @SuppressLint("ClickableViewAccessibility", "InflateParams")
     private fun getImagePixel(bitmap: Bitmap) = MaterialAlertDialogBuilder(activity)
         .setCustomTitle(R.layout.zoom_custom_title) {
@@ -127,18 +132,22 @@ class PhotoManager(
             }
         }
         .setView(R.layout.zoom_layout) {
+            val b = if (bitmap.width > bitmap.height) bitmap.rotate(90f) else bitmap
             val gestureDetector = GestureDetector(activity, object : GestureDetector.SimpleOnGestureListener() {
                 override fun onLongPress(e: MotionEvent) {
                     if (zoomImage.isReady) {
-                        val sCoord: PointF = zoomImage.viewToSourceCoord(e.x, e.y)!!
-                        val pixel = bitmap.getPixel(sCoord.x.toInt(), sCoord.y.toInt())
-                        imageGet(pixel)
+                        try {
+                            val sCoord: PointF = zoomImage.viewToSourceCoord(e.x, e.y)!!
+                            val pixel = b.getPixel(sCoord.x.toInt(), sCoord.y.toInt())
+                            imageGet(pixel)
+                        } catch (e: Exception) {
+
+                        }
                     }
                 }
             })
 
-            if (bitmap.width > bitmap.height) zoomImage.orientation = SubsamplingScaleImageView.ORIENTATION_90
-            zoomImage.setImage(ImageSource.bitmap(bitmap))
+            zoomImage.setImage(ImageSource.bitmap(b))
             zoomImage.setOnTouchListener { _, motionEvent -> gestureDetector.onTouchEvent(motionEvent) }
         }
         .setPositiveButton("Done") { _, _ -> }
