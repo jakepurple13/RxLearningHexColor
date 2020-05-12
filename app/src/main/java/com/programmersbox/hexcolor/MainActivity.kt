@@ -249,6 +249,7 @@ class MainActivity : AppCompatActivity() {
                 .also { pair ->
                     buttonList.forEach {
                         it.setTextColor(pair.first)
+                        it.setShadowLayer(1.6f, 1.5f, 1.3f, pair.second)
                         it.strokeColor = ColorStateList.valueOf(pair.second)
                     }
                 }
