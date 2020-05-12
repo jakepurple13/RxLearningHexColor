@@ -24,8 +24,7 @@ import com.programmersbox.dragswipe.Direction
 import com.programmersbox.dragswipe.DragSwipeActions
 import com.programmersbox.dragswipe.DragSwipeAdapter
 import com.programmersbox.dragswipe.DragSwipeUtils
-import com.programmersbox.gsonutils.getObject
-import com.programmersbox.gsonutils.putObject
+import com.programmersbox.gsonutils.sharedPrefObjectDelegate
 import com.programmersbox.helpfulutils.*
 import com.programmersbox.rxutils.invoke
 import io.reactivex.Observable
@@ -51,12 +50,8 @@ class MainActivity : AppCompatActivity() {
 
     private val currentApiColor get() = colorApiShow.value ?: colorApiBlack
 
-    private var favoriteList
-        get() = (defaultSharedPref.getObject("favorites", emptyList<ColorApi>()) ?: emptyList()).toMutableList()
-        set(value) = defaultSharedPref.edit().putObject("favorites", value).apply()
-    private var history
-        get() = (defaultSharedPref.getObject("history", emptyList<ColorApi>()) ?: emptyList()).toMutableList()
-        set(value) = defaultSharedPref.edit().putObject("history", value).apply()
+    private var favoriteList: List<ColorApi>? by sharedPrefObjectDelegate(emptyList(), key = "favorites")
+    private var history: List<ColorApi>? by sharedPrefObjectDelegate(emptyList(), key = "history")
 
     private val favoriteCheck: (ColorApi) -> Boolean =
         { it.name?.value ?: "" == currentApiColor.name?.value ?: "" && it.hex?.value == currentApiColor.hex?.value }
@@ -112,7 +107,7 @@ class MainActivity : AppCompatActivity() {
 
         favImage
             .clicks()
-            .map { favoriteList.any(favoriteCheck) }
+            .map { favoriteList!!.any(favoriteCheck) }
             .subscribe { if (it) removeFromFavorites(currentApiColor) else addToFavorites(currentApiColor) }
             .addTo(disposables)
 
@@ -158,7 +153,7 @@ class MainActivity : AppCompatActivity() {
         favoriteSubject
             .observeOn(AndroidSchedulers.mainThread())
             .subscribeOn(AndroidSchedulers.mainThread())
-            .map { favoriteList.any(favoriteCheck) && rxArea.getCurrentHex().length == 7 && it }
+            .map { favoriteList!!.any(favoriteCheck) && rxArea.getCurrentHex().length == 7 && it }
             .map { if (it) 1f else 0f }
             .map { ValueAnimator.ofFloat(favImage.progress, it) }
             .subscribe {
@@ -182,7 +177,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun addToHistory(colorApi: ColorApi) {
-        val hist = history
+        val hist = history!!.toMutableList()
         hist.addMax(colorApi)
         history = hist
     }
@@ -250,7 +245,7 @@ class MainActivity : AppCompatActivity() {
     private fun Any?.unit() = Unit
 
     private fun addToFavorites(colorApi: ColorApi) {
-        val favorites = favoriteList
+        val favorites = favoriteList!!.toMutableList()
         if (favorites.all { it.name?.value != colorApi.name?.value || it.hex?.value != colorApi.hex?.value }) favorites.add(colorApi)
             .also { toast("Added to Favorites") }
         favoriteList = favorites
@@ -258,7 +253,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun removeFromFavorites(colorApi: ColorApi) {
-        val favorites = favoriteList
+        val favorites = favoriteList!!.toMutableList()
         if (favorites.removeIf { it.name?.value == colorApi.name?.value && it.hex?.value == colorApi.hex?.value }) toast("Removed from Favorites")
         favoriteList = favorites
         favoriteSubject(true)
@@ -278,18 +273,18 @@ class MainActivity : AppCompatActivity() {
             when (item) {
                 MenuOptions.ADD -> addToFavorites(colorApi)
                 MenuOptions.RANDOM -> randomColor()
-                MenuOptions.VIEW_FAVORITES -> showFavoritesOrHistory(favoriteList, true)
+                MenuOptions.VIEW_FAVORITES -> showFavoritesOrHistory(favoriteList!!, true)
                 MenuOptions.MORE_INFO -> moreColorInfo(colorApi)
                 MenuOptions.SELECT_IMAGE -> photoManager.selectImage()
-                MenuOptions.VIEW_HISTORY -> showFavoritesOrHistory(history, false)
+                MenuOptions.VIEW_HISTORY -> showFavoritesOrHistory(history!!, false)
             }
         }
         .show().unit()
 
     @SuppressLint("SetTextI18n")
-    private fun showFavoritesOrHistory(list: MutableList<ColorApi>, isFavorite: Boolean) {
+    private fun showFavoritesOrHistory(list: List<ColorApi>, isFavorite: Boolean) {
         val view = layoutInflater.inflate(R.layout.favorite_layout, null)
-        val adapter = FavoriteAdapter(list)
+        val adapter = FavoriteAdapter(list.toMutableList())
         view.favTitle.text = "${if (isFavorite) "Favorites" else "History"}: ${list.size}"
         view.favoriteRV.adapter = adapter
         if (isFavorite)
