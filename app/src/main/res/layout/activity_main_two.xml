@@ -350,11 +350,13 @@
     <!--ShortcutBar-->
 
     <LinearLayout
+        android:padding="5dp"
         android:id="@+id/shortcutBar"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:orientation="vertical"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toTopOf="@id/keys"
         app:layout_constraintEnd_toEndOf="@id/keys"
         app:layout_constraintStart_toStartOf="@id/keys"
         tools:ignore="ContentDescription">
@@ -364,6 +366,7 @@
             android:id="@+id/swatchHistory"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:textAppearance="@style/ColorText.Digit"
             android:text="History"
             app:cornerRadius="0dp" />
 
@@ -372,6 +375,7 @@
             android:id="@+id/viewFavorites"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:textAppearance="@style/ColorText.Digit"
             android:text="Favorites"
             app:cornerRadius="0dp" />
 
@@ -379,8 +383,9 @@
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:id="@+id/addFavorites"
             android:layout_width="match_parent"
+            android:textAppearance="@style/ColorText.Digit"
             android:layout_height="wrap_content"
-            android:text="Add/Remove Favorites"
+            android:text="Add To Favorites"
             app:cornerRadius="0dp" />
 
         <com.google.android.material.button.MaterialButton
@@ -388,6 +393,7 @@
             android:id="@+id/moreInfo"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:textAppearance="@style/ColorText.Digit"
             android:text="More Info"
             app:cornerRadius="0dp" />
 
@@ -397,6 +403,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Select Image"
+            android:textAppearance="@style/ColorText.Digit"
             app:cornerRadius="0dp" />
 
         <com.google.android.material.button.MaterialButton
@@ -404,6 +411,7 @@
             android:id="@+id/randomColor"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:textAppearance="@style/ColorText.Digit"
             android:text="Random Color"
             app:cornerRadius="0dp" />
 

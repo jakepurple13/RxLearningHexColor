@@ -4,6 +4,7 @@ import android.Manifest
 import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
@@ -246,7 +247,12 @@ class MainActivity : AppCompatActivity() {
                     favImage.changeTint(it.first)
                     favImageShadow.changeTint(it.second)
                 }
-                .also { pair -> buttonList.forEach { it.setTextColor(pair.first) } }
+                .also { pair ->
+                    buttonList.forEach {
+                        it.setTextColor(pair.first)
+                        it.strokeColor = ColorStateList.valueOf(pair.second)
+                    }
+                }
                 .also { pair ->
                     listOf(zero, one, two, three, four, five, six, seven, eight, nine, A, B, C, D, E, F, hex, rgb, back, clear, color_name).forEach {
                         it.setTextColor(pair.first)
