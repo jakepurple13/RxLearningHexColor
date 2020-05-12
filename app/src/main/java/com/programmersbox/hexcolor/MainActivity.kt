@@ -13,7 +13,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.constraintlayout.widget.ConstraintSet
 import androidx.recyclerview.widget.RecyclerView
+import androidx.transition.TransitionManager
 import com.airbnb.lottie.LottieAnimationView
 import com.airbnb.lottie.LottieProperty
 import com.airbnb.lottie.model.KeyPath
@@ -72,10 +74,24 @@ class MainActivity : AppCompatActivity() {
         val digitStream = Observable.merge(digits)
         rxArea = RxArea(defaultSharedPref, back.clicks(), clear.clicks(), digitStream, disposables, backgroundUpdate, uiShow, colorApiShow)
 
-        menuOptions
+        /*menuOptions
             .clicks()
             .map { currentApiColor }
             .subscribe(this::showMenu)
+            .addTo(disposables)*/
+
+        var constraints = ItemRange(
+            ConstraintSet().apply { clone(layout) },
+            ConstraintSet().apply { clone(this@MainActivity, R.layout.activity_main_two) }
+        )
+
+        menuOptions
+            .clicks()
+            .subscribe {
+                TransitionManager.beginDelayedTransition(layout)
+                constraints++
+                constraints.item.applyTo(layout)
+            }
             .addTo(disposables)
 
         back
@@ -169,6 +185,36 @@ class MainActivity : AppCompatActivity() {
             .subscribe(this::randomColorInt)
             .addTo(disposables)
 
+        randomColor
+            .clicks()
+            .subscribe { randomColor() }
+            .addTo(disposables)
+
+        addFavorites
+            .clicks()
+            .subscribe { addToFavorites(currentApiColor) }
+            .addTo(disposables)
+
+        viewFavorites
+            .clicks()
+            .subscribe { showFavoritesOrHistory(favoriteList!!, true) }
+            .addTo(disposables)
+
+        swatchHistory
+            .clicks()
+            .subscribe { showFavoritesOrHistory(history!!, false) }
+            .addTo(disposables)
+
+        moreInfo
+            .clicks()
+            .subscribe { moreColorInfo(currentApiColor) }
+            .addTo(disposables)
+
+        pickImage
+            .clicks()
+            .subscribe { photoManager.selectImage() }
+            .addTo(disposables)
+
     }
 
     private fun <T> MutableList<T>.addMax(item: T) {
@@ -185,6 +231,8 @@ class MainActivity : AppCompatActivity() {
     private fun LottieAnimationView.changeTint(newColor: Int) =
         addValueCallback(KeyPath("**"), LottieProperty.COLOR_FILTER) { PorterDuffColorFilter(newColor, PorterDuff.Mode.SRC_ATOP) }
 
+    private val buttonList by lazy { listOf(randomColor, addFavorites, viewFavorites, swatchHistory, moreInfo, pickImage) }
+
     private fun animateColorChange(newColor: Int) = colorAnimator((layout.background as ColorDrawable).color, newColor)
         .subscribe { color ->
             layout.setBackgroundColor(color)
@@ -198,6 +246,7 @@ class MainActivity : AppCompatActivity() {
                     favImage.changeTint(it.first)
                     favImageShadow.changeTint(it.second)
                 }
+                .also { pair -> buttonList.forEach { it.setTextColor(pair.first) } }
                 .also { pair ->
                     listOf(zero, one, two, three, four, five, six, seven, eight, nine, A, B, C, D, E, F, hex, rgb, back, clear, color_name).forEach {
                         it.setTextColor(pair.first)
