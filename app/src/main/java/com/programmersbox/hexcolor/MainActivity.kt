@@ -51,6 +51,8 @@ class MainActivity : AppCompatActivity() {
     private val imageGet = PublishSubject.create<Int>()
     private val favoriteSubject = PublishSubject.create<Boolean>()
 
+    private val buttonList by lazy { listOf(randomColor, addFavorites, viewFavorites, swatchHistory, moreInfo, pickImage) }
+
     private val currentApiColor get() = colorApiShow.value ?: colorApiBlack
 
     private var favoriteList: List<ColorApi>? by sharedPrefObjectDelegate(emptyList(), key = "favorites")
@@ -74,12 +76,6 @@ class MainActivity : AppCompatActivity() {
             .map { digit -> digit.clicks().map { digit.text.toString() } }
         val digitStream = Observable.merge(digits)
         rxArea = RxArea(defaultSharedPref, back.clicks(), clear.clicks(), digitStream, disposables, backgroundUpdate, uiShow, colorApiShow)
-
-        /*menuOptions
-            .clicks()
-            .map { currentApiColor }
-            .subscribe(this::showMenu)
-            .addTo(disposables)*/
 
         var constraints = ItemRange(
             ConstraintSet().apply { clone(layout) },
@@ -193,7 +189,8 @@ class MainActivity : AppCompatActivity() {
 
         addFavorites
             .clicks()
-            .subscribe { addToFavorites(currentApiColor) }
+            .map { favoriteList!!.any(favoriteCheck) }
+            .subscribe { if (it) removeFromFavorites(currentApiColor) else addToFavorites(currentApiColor) }
             .addTo(disposables)
 
         viewFavorites
@@ -232,8 +229,6 @@ class MainActivity : AppCompatActivity() {
     private fun LottieAnimationView.changeTint(newColor: Int) =
         addValueCallback(KeyPath("**"), LottieProperty.COLOR_FILTER) { PorterDuffColorFilter(newColor, PorterDuff.Mode.SRC_ATOP) }
 
-    private val buttonList by lazy { listOf(randomColor, addFavorites, viewFavorites, swatchHistory, moreInfo, pickImage) }
-
     private fun animateColorChange(newColor: Int) = colorAnimator((layout.background as ColorDrawable).color, newColor)
         .subscribe { color ->
             layout.setBackgroundColor(color)
@@ -268,20 +263,6 @@ class MainActivity : AppCompatActivity() {
         valueAnimator.duration = 250
         val observable = Observable.create<Int> { emitter -> valueAnimator.addUpdateListener { emitter.onNext(it.animatedValue as Int) } }
         return observable.doOnSubscribe { valueAnimator.start() }
-    }
-
-    enum class MenuOptions(private val info: String) {
-        ADD("Add to favorites"),
-        RANDOM("Random Color"),
-        VIEW_FAVORITES("View Favorites"),
-        MORE_INFO("More Info"),
-        SELECT_IMAGE("Pick a color from a picture"),
-        VIEW_HISTORY("View History");
-
-        fun data(c: ColorApi) = when (this) {
-            ADD -> "Add ${c.name?.value ?: c.hex?.value} to favorites"
-            else -> info
-        }
     }
 
     private fun moreColorInfo(colorApi: ColorApi) = MaterialAlertDialogBuilder(this)
@@ -322,43 +303,31 @@ class MainActivity : AppCompatActivity() {
     private fun randomColor(colorString: String? = null) = newColor(colorString ?: Random.nextColor().toHexString(), 1)
     private fun randomColorInt(colorString: Int? = null) = newColor((colorString ?: Random.nextColor()).toHexString(), 3)
 
-    private fun showMenu(colorApi: ColorApi) = MaterialAlertDialogBuilder(this)
-        .setTitle("Options")
-        .setEnumItems(MenuOptions.values().map { it.data(colorApi) }.toTypedArray()) { item: MenuOptions, _ ->
-            when (item) {
-                MenuOptions.ADD -> addToFavorites(colorApi)
-                MenuOptions.RANDOM -> randomColor()
-                MenuOptions.VIEW_FAVORITES -> showFavoritesOrHistory(favoriteList!!, true)
-                MenuOptions.MORE_INFO -> moreColorInfo(colorApi)
-                MenuOptions.SELECT_IMAGE -> photoManager.selectImage()
-                MenuOptions.VIEW_HISTORY -> showFavoritesOrHistory(history!!, false)
-            }
-        }
-        .show().unit()
-
     @SuppressLint("SetTextI18n")
     private fun showFavoritesOrHistory(list: List<ColorApi>, isFavorite: Boolean) {
         val view = layoutInflater.inflate(R.layout.favorite_layout, null)
         val adapter = FavoriteAdapter(list.toMutableList())
         view.favTitle.text = "${if (isFavorite) "Favorites" else "History"}: ${list.size}"
         view.favoriteRV.adapter = adapter
-        if (isFavorite)
-            DragSwipeUtils.setDragSwipeUp(
-                adapter, view.favoriteRV, listOf(Direction.UP, Direction.DOWN), listOf(Direction.START, Direction.END),
-                object : DragSwipeActions<ColorApi> {
-                    override fun onSwiped(
-                        viewHolder: RecyclerView.ViewHolder, direction: Direction, dragSwipeAdapter: DragSwipeAdapter<ColorApi, *>
-                    ) {
-                        super.onSwiped(viewHolder, direction, dragSwipeAdapter)
-                        view.favTitle.text = "Favorites: ${adapter.dataList.size}"
-                        favoriteSubject(adapter.dataList.any(favoriteCheck))
-                    }
+        DragSwipeUtils.setDragSwipeUp(
+            adapter, view.favoriteRV, listOf(Direction.UP, Direction.DOWN), listOf(Direction.START, Direction.END),
+            object : DragSwipeActions<ColorApi> {
+                override fun onSwiped(
+                    viewHolder: RecyclerView.ViewHolder, direction: Direction, dragSwipeAdapter: DragSwipeAdapter<ColorApi, *>
+                ) {
+                    super.onSwiped(viewHolder, direction, dragSwipeAdapter)
+                    view.favTitle.text = "${if (isFavorite) "Favorites" else "History"}: ${adapter.dataList.size}"
+                    if (isFavorite) favoriteSubject(adapter.dataList.any(favoriteCheck))
                 }
-            )
+            }
+        )
         MaterialAlertDialogBuilder(this)
             .setView(view)
             .setPositiveButton("Done") { d, _ -> d.dismiss() }
-            .whatIf(isFavorite) { setOnDismissListener { favoriteList = adapter.dataList } }
+            .setOnDismissListener {
+                if (isFavorite) favoriteList = adapter.dataList
+                else history = adapter.dataList
+            }
             .show()
     }
 

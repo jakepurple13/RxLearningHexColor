@@ -361,44 +361,44 @@
         tools:ignore="ContentDescription">
 
         <com.google.android.material.button.MaterialButton
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:id="@+id/swatchHistory"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/ColorText.Digit"
             android:text="History"
+            android:textAppearance="@style/ColorText.Digit"
             app:cornerRadius="0dp" />
 
         <com.google.android.material.button.MaterialButton
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:id="@+id/viewFavorites"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/ColorText.Digit"
             android:text="Favorites"
+            android:textAppearance="@style/ColorText.Digit"
             app:cornerRadius="0dp" />
 
         <com.google.android.material.button.MaterialButton
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:id="@+id/addFavorites"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"
-            android:textAppearance="@style/ColorText.Digit"
             android:layout_height="wrap_content"
-            android:text="Add to Favorites"
+            android:text="Add/Remove Favorites"
+            android:textAppearance="@style/ColorText.Digit"
             app:cornerRadius="0dp" />
 
         <com.google.android.material.button.MaterialButton
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:id="@+id/moreInfo"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/ColorText.Digit"
             android:text="More Info"
+            android:textAppearance="@style/ColorText.Digit"
             app:cornerRadius="0dp" />
 
         <com.google.android.material.button.MaterialButton
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:id="@+id/pickImage"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Select Image"
@@ -406,12 +406,12 @@
             app:cornerRadius="0dp" />
 
         <com.google.android.material.button.MaterialButton
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:id="@+id/randomColor"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/ColorText.Digit"
             android:text="Random Color"
+            android:textAppearance="@style/ColorText.Digit"
             app:cornerRadius="0dp" />
 
     </LinearLayout>
