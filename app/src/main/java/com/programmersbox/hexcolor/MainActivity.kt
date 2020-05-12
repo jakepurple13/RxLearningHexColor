@@ -16,7 +16,6 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.recyclerview.widget.RecyclerView
-import androidx.transition.TransitionManager
 import com.airbnb.lottie.LottieAnimationView
 import com.airbnb.lottie.LottieProperty
 import com.airbnb.lottie.model.KeyPath
@@ -77,18 +76,15 @@ class MainActivity : AppCompatActivity() {
         val digitStream = Observable.merge(digits)
         rxArea = RxArea(defaultSharedPref, back.clicks(), clear.clicks(), digitStream, disposables, backgroundUpdate, uiShow, colorApiShow)
 
-        var constraints = ItemRange(
+        var constraintRange = ConstraintRange(
+            layout,
             ConstraintSet().apply { clone(layout) },
             ConstraintSet().apply { clone(this@MainActivity, R.layout.activity_main_two) }
         )
 
         menuOptions
             .clicks()
-            .subscribe {
-                TransitionManager.beginDelayedTransition(layout)
-                constraints++
-                constraints.item.applyTo(layout)
-            }
+            .subscribe { constraintRange++ }
             .addTo(disposables)
 
         back
