@@ -63,6 +63,7 @@ class MainActivity : AppCompatActivity() {
     private val photoManager = PhotoManager(imageGet, this, disposables)
     private lateinit var rxArea: RxArea
 
+    @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -157,6 +158,13 @@ class MainActivity : AppCompatActivity() {
         colorApiShow
             .map { true }
             .subscribe(favoriteSubject::invoke)
+            .addTo(disposables)
+
+        favoriteSubject
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribeOn(AndroidSchedulers.mainThread())
+            .map { favoriteList!!.any(favoriteCheck) && rxArea.getCurrentHex().length == 7 && it }
+            .subscribe { addFavorites.text = "${if (it) "Remove" else "Add"} Favorites" }
             .addTo(disposables)
 
         favoriteSubject
