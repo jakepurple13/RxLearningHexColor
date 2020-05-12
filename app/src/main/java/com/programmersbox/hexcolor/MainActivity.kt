@@ -50,8 +50,6 @@ class MainActivity : AppCompatActivity() {
     private val imageGet = PublishSubject.create<Int>()
     private val favoriteSubject = PublishSubject.create<Boolean>()
 
-    private val buttonList by lazy { listOf(randomColor, addFavorites, viewFavorites, swatchHistory, moreInfo, pickImage) }
-
     private val currentApiColor get() = colorApiShow.value ?: colorApiBlack
 
     private var favoriteList: List<ColorApi>? by sharedPrefObjectDelegate(emptyList(), key = "favorites")
@@ -247,7 +245,7 @@ class MainActivity : AppCompatActivity() {
                     favImageShadow.changeTint(it.second)
                 }
                 .also { pair ->
-                    buttonList.forEach {
+                    listOf(randomColor, addFavorites, viewFavorites, swatchHistory, moreInfo, pickImage).forEach {
                         it.setTextColor(pair.first)
                         it.setShadowLayer(1.6f, 1.5f, 1.3f, pair.second)
                         it.strokeColor = ColorStateList.valueOf(pair.second)
