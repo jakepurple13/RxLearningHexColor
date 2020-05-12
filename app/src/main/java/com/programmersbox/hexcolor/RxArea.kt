@@ -7,7 +7,6 @@ import com.github.pwittchen.reactivenetwork.library.rx2.internet.observing.Inter
 import com.github.pwittchen.reactivenetwork.library.rx2.internet.observing.strategy.SocketInternetObservingStrategy
 import com.programmersbox.gsonutils.getObject
 import com.programmersbox.rxutils.invoke
-import com.programmersbox.rxutils.ioMain
 import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
@@ -49,18 +48,19 @@ class RxArea(
     init {
         var connected = false
         ReactiveNetwork.observeInternetConnectivity(
-                InternetObservingSettings.builder()
-                    .host("https://www.thecolorapi.com")
-                    .strategy(SocketInternetObservingStrategy())
-                    .build()
-            )
+            InternetObservingSettings.builder()
+                .host("https://www.thecolorapi.com")
+                .strategy(SocketInternetObservingStrategy())
+                .build()
+        )
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe { connected = it }
             .addTo(disposables)
 
         hexStringSubject
-            .ioMain()
+            .observeOn(Schedulers.io())
+            .subscribeOn(AndroidSchedulers.mainThread())
             .map { s ->
                 (if (s.length == 7) {
                     sharedPrefs.getObject<List<ColorApi>>("favorites", null)?.find { it.hex?.value == s }
