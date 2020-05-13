@@ -1,11 +1,10 @@
 package com.programmersbox.hexcolor
 
-import android.content.SharedPreferences
+import android.content.Context
 import android.graphics.Color
 import com.github.pwittchen.reactivenetwork.library.rx2.ReactiveNetwork
 import com.github.pwittchen.reactivenetwork.library.rx2.internet.observing.InternetObservingSettings
 import com.github.pwittchen.reactivenetwork.library.rx2.internet.observing.strategy.SocketInternetObservingStrategy
-import com.programmersbox.gsonutils.getObject
 import com.programmersbox.rxutils.invoke
 import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -15,9 +14,8 @@ import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.BehaviorSubject
 import io.reactivex.subjects.PublishSubject
 
-
 class RxArea(
-    private val sharedPrefs: SharedPreferences,
+    private val context: Context,
     backStream: Observable<Unit>,
     clearStream: Observable<Unit>,
     digitsStream: Observable<String>,
@@ -63,7 +61,8 @@ class RxArea(
             .subscribeOn(AndroidSchedulers.mainThread())
             .map { s ->
                 (if (s.length == 7) {
-                    sharedPrefs.getObject<List<ColorApi>>("favorites", null)?.find { it.hex?.value == s }
+                    context.favoriteList?.find { it.hex?.value == s }
+                        ?: context.history?.find { it.hex?.value == s }
                         ?: if (connected) getApiOrError(s) else errorColor(s)
                 } else null) ?: colorApiBlack
             }

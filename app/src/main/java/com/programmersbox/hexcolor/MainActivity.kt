@@ -4,6 +4,7 @@ import android.Manifest
 import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.PorterDuff
@@ -36,7 +37,10 @@ import com.programmersbox.dragswipe.DragSwipeActions
 import com.programmersbox.dragswipe.DragSwipeAdapter
 import com.programmersbox.dragswipe.DragSwipeUtils
 import com.programmersbox.gsonutils.sharedPrefObjectDelegate
-import com.programmersbox.helpfulutils.*
+import com.programmersbox.helpfulutils.ConstraintRange
+import com.programmersbox.helpfulutils.nextColor
+import com.programmersbox.helpfulutils.requestPermissions
+import com.programmersbox.helpfulutils.toHexString
 import com.programmersbox.rxutils.invoke
 import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -51,6 +55,9 @@ import kotlinx.android.synthetic.main.shortcut_bar_layout.*
 import java.util.*
 import kotlin.random.Random
 
+var Context.favoriteList: List<ColorApi>? by sharedPrefObjectDelegate(emptyList(), key = "favorites")
+var Context.history: List<ColorApi>? by sharedPrefObjectDelegate(emptyList(), key = "history")
+
 class MainActivity : AppCompatActivity() {
 
     private val disposables = CompositeDisposable()
@@ -61,9 +68,6 @@ class MainActivity : AppCompatActivity() {
     private val favoriteSubject = PublishSubject.create<Boolean>()
 
     private val currentApiColor get() = colorApiShow.value ?: colorApiBlack
-
-    private var favoriteList: List<ColorApi>? by sharedPrefObjectDelegate(emptyList(), key = "favorites")
-    private var history: List<ColorApi>? by sharedPrefObjectDelegate(emptyList(), key = "history")
 
     private val favoriteCheck: (ColorApi) -> Boolean =
         { it.name?.value ?: "" == currentApiColor.name?.value ?: "" && it.hex?.value == currentApiColor.hex?.value }
@@ -83,7 +87,7 @@ class MainActivity : AppCompatActivity() {
         val digits = listOf(zero, one, two, three, four, five, six, seven, eight, nine, A, B, C, D, E, F)
             .map { digit -> digit.clicks().map { digit.text.toString() } }
         val digitStream = Observable.merge(digits)
-        rxArea = RxArea(defaultSharedPref, back.clicks(), clear.clicks(), digitStream, disposables, backgroundUpdate, uiShow, colorApiShow)
+        rxArea = RxArea(this, back.clicks(), clear.clicks(), digitStream, disposables, backgroundUpdate, uiShow, colorApiShow)
 
         var constraintRange = ConstraintRange(
             layout,
