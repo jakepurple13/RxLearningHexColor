@@ -80,7 +80,7 @@
         android:layout_marginStart="1.5dp"
         android:layout_marginTop="1.3dp"
         android:src="@drawable/baseline_menu_white_18dp"
-        android:tint="#000000"
+        app:tint="#000000"
         app:layout_constraintBottom_toBottomOf="@id/menuOptions"
         app:layout_constraintEnd_toEndOf="@id/menuOptions"
         app:layout_constraintStart_toStartOf="@id/menuOptions"
@@ -349,8 +349,9 @@
 
     <!--ShortcutBar-->
 
-    <LinearLayout
+    <include
         android:id="@+id/shortcutBar"
+        layout="@layout/shortcut_bar_layout"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:orientation="vertical"
@@ -358,64 +359,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="@id/keys"
         app:layout_constraintStart_toStartOf="@id/keys"
-        app:layout_constraintTop_toTopOf="@id/keys"
-        tools:ignore="ContentDescription">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/swatchHistory"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="History"
-            android:textAppearance="@style/ColorText.Digit"
-            app:cornerRadius="0dp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/viewFavorites"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Favorites"
-            android:textAppearance="@style/ColorText.Digit"
-            app:cornerRadius="0dp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/addFavorites"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Add/Remove Favorites"
-            android:textAppearance="@style/ColorText.Digit"
-            app:cornerRadius="0dp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/moreInfo"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="More Info"
-            android:textAppearance="@style/ColorText.Digit"
-            app:cornerRadius="0dp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/pickImage"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Select Image"
-            android:textAppearance="@style/ColorText.Digit"
-            app:cornerRadius="0dp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/randomColor"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Random Color"
-            android:textAppearance="@style/ColorText.Digit"
-            app:cornerRadius="0dp" />
-
-    </LinearLayout>
+        app:layout_constraintTop_toTopOf="@id/keys" />
 
     <TextView
         android:id="@+id/firstItem"

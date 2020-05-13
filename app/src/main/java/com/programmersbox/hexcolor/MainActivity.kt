@@ -15,7 +15,16 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintSet
+import androidx.core.graphics.toColorInt
 import androidx.recyclerview.widget.RecyclerView
+import codes.side.andcolorpicker.converter.setFromColorInt
+import codes.side.andcolorpicker.converter.toColorInt
+import codes.side.andcolorpicker.group.PickerGroup
+import codes.side.andcolorpicker.group.registerPickers
+import codes.side.andcolorpicker.hsl.HSLColorPickerSeekBar
+import codes.side.andcolorpicker.model.IntegerHSLColor
+import codes.side.andcolorpicker.view.picker.ColorSeekBar
+import codes.side.andcolorpicker.view.swatch.SwatchView
 import com.airbnb.lottie.LottieAnimationView
 import com.airbnb.lottie.LottieProperty
 import com.airbnb.lottie.model.KeyPath
@@ -38,6 +47,7 @@ import io.reactivex.subjects.PublishSubject
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.favorite_item.view.*
 import kotlinx.android.synthetic.main.favorite_layout.view.*
+import kotlinx.android.synthetic.main.shortcut_bar_layout.*
 import java.util.*
 import kotlin.random.Random
 
@@ -135,6 +145,23 @@ class MainActivity : AppCompatActivity() {
             .subscribe(favoriteSubject::invoke)
             .addTo(disposables)
 
+        val pickerGroup = PickerGroup<IntegerHSLColor>().also {
+            it.registerPickers(
+                hueColorPickerSeekBar,
+                saturationColorPickerSeekBar,
+                lightnessColorPickerSeekBar,
+                alphaColorPickerSeekBar
+            )
+        }
+
+        uiShow
+            .map { s -> ColorPickerValue(if (s.length == 7) IntegerHSLColor().also { it.setFromColorInt(s.toColorInt()) } else null) }
+            .subscribe {
+                it.color?.let { it1 -> swatchView.color = it1 }
+                it.color?.let { it1 -> pickerGroup.setColor(it1) }
+            }
+            .addTo(disposables)
+
         colorApiShow
             .observeOn(AndroidSchedulers.mainThread())
             .subscribeOn(AndroidSchedulers.mainThread())
@@ -215,7 +242,30 @@ class MainActivity : AppCompatActivity() {
             .subscribe { photoManager.selectImage() }
             .addTo(disposables)
 
+        swatchLayout
+            .clicks()
+            .subscribe { swatchView.color?.toColorInt()?.let { randomColorInt(it) } }
+            .addTo(disposables)
+
+        // Listen individual pickers or groups for changes
+        pickerGroup.addListener(
+            object : HSLColorPickerSeekBar.DefaultOnColorPickListener() {
+                override fun onColorChanged(picker: ColorSeekBar<IntegerHSLColor>, color: IntegerHSLColor, value: Int) {
+                    swatchView.color = color
+                }
+            }
+        )
     }
+
+    private var swatchViewColor: codes.side.andcolorpicker.model.Color? = null
+        set(value) {
+            field = value
+            value?.let { swatchView.setSwatchColor(it) }
+        }
+
+    private var SwatchView.color: codes.side.andcolorpicker.model.Color?
+        get() = swatchViewColor
+        set(value) = run { swatchViewColor = value }
 
     private fun <T> MutableList<T>.addMax(item: T) {
         add(0, item)
@@ -354,4 +404,6 @@ class MainActivity : AppCompatActivity() {
     class FavHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val name: TextView = itemView.colorName
     }
+
+    class ColorPickerValue(val color: IntegerHSLColor?)
 }
