@@ -84,6 +84,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private lateinit var constraintRange: ConstraintRange
+
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -98,7 +100,7 @@ class MainActivity : AppCompatActivity() {
         val digitStream = Observable.merge(digits)
         rxArea = RxArea(this, back.clicks(), clear.clicks(), digitStream, disposables, backgroundUpdate, uiShow, colorApiShow)
 
-        var constraintRange = ConstraintRange(
+        constraintRange = ConstraintRange(
             layout,
             ConstraintSet().apply { clone(layout) },
             ConstraintSet().apply { clone(this@MainActivity, R.layout.activity_main_two) }
@@ -379,6 +381,12 @@ class MainActivity : AppCompatActivity() {
                 else history = adapter.dataList
             }
             .show()
+    }
+
+    override fun onPause() {
+        constraintRange.current = 0
+        constraintRange.item.applyTo(layout)
+        super.onPause()
     }
 
     inner class FavoriteAdapter(dataList: MutableList<ColorApi>) : DragSwipeAdapter<ColorApi, FavHolder>(dataList) {
