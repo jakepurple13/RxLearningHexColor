@@ -1,3 +1,29 @@
 <resources>
     <string name="app_name">HexColorer</string>
+    <string name="permissions">Please accept these permissions %s</string>
+    <plurals name="favoriteWord">
+        <item quantity="one">Favorite</item>
+        <item quantity="other">Favorites</item>
+    </plurals>
+    <string name="favorites">Favorites</string>
+    <string name="moreInfo">More Info</string>
+    <string name="randomColor">Random Color</string>
+    <string name="selectImage">Select Image</string>
+    <string name="history">History</string>
+    <string name="addToFavorite">Add Favorite</string>
+    <string name="removeFromFavorites">Remove Favorite</string>
+    <string name="addedFavorite">Added to Favorites</string>
+    <string name="removedFavorite">Removed from Favorites</string>
+    <string name="done">Done</string>
+
+    <string name="take_photo">Take Photo</string>
+    <string name="gallery">Choose from Gallery</string>
+    <string name="cancel">Cancel</string>
+    <string name="wrong">Something went wrong</string>
+    <string name="tryAgain">Something went wrong, please try again</string>
+    <string name="photoTakePerm">Please accept the permissions in order to take a photo</string>
+    <string name="photoPickPerm">Please accept the permissions in order to pick a photo</string>
+    <string name="savePhoto">Save Photo</string>
+    <string name="photoSaved">Photo Saved</string>
+    <string name="photoFrom">Take a picture from</string>
 </resources>

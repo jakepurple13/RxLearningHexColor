@@ -22,6 +22,7 @@ import com.github.florent37.inlineactivityresult.Result
 import com.github.florent37.inlineactivityresult.rx.RxInlineActivityResult
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.programmersbox.helpfulutils.requestPermissions
+import com.programmersbox.helpfulutils.setEnumItems
 import com.programmersbox.helpfulutils.whatIf
 import com.programmersbox.rxutils.invoke
 import io.reactivex.Single
@@ -54,34 +55,44 @@ class PhotoManager(
 
     private val imageShow = PublishSubject.create<Bitmap>()
 
+    private val translations: TranslationInterface by lazy { Translations(activity.resources) }
+
     init {
         imageShow
             .subscribe(this::getImagePixel)
             .addTo(disposables)
     }
 
-    private enum class ImageOptions(val text: CharSequence) { TAKE_PHOTO("Take Photo"), GALLERY("Choose from Gallery"), CANCEL("Cancel") }
+    private enum class ImageOptions {
+        TAKE_PHOTO, GALLERY, CANCEL;
+
+        fun getText(translationInterface: TranslationInterface) = when (this) {
+            TAKE_PHOTO -> translationInterface.takePhoto()
+            GALLERY -> translationInterface.gallery()
+            CANCEL -> translationInterface.cancel()
+        }
+    }
 
     fun selectImage(): AlertDialog = MaterialAlertDialogBuilder(activity)
-        .setTitle("Take a picture from")
-        .setItems(ImageOptions.values().map(ImageOptions::text).toTypedArray()) { dialog, item ->
-            when (ImageOptions.values()[item]) {
+        .setTitle(translations.photoFrom())
+        .setEnumItems(ImageOptions.values().map { it.getText(translations) }.toTypedArray()) { item: ImageOptions, dialog ->
+            when (item) {
                 ImageOptions.TAKE_PHOTO -> activity.requestPermissions(
                     Manifest.permission.CAMERA,
                     Manifest.permission.READ_EXTERNAL_STORAGE,
                     Manifest.permission.WRITE_EXTERNAL_STORAGE
-                ) { if (it.isGranted) dispatchTakePictureIntent() else activity.toast("Please accept the permissions in order to take a photo") }
+                ) { if (it.isGranted) dispatchTakePictureIntent() else activity.toast(translations.photoTakePerm()) }
                 ImageOptions.GALLERY -> activity.requestPermissions(
                     Manifest.permission.READ_EXTERNAL_STORAGE,
                     Manifest.permission.WRITE_EXTERNAL_STORAGE
-                ) { if (it.isGranted) pickPhoto() else activity.toast("Please accept the permissions in order to pick a photo") }
+                ) { if (it.isGranted) pickPhoto() else activity.toast(translations.photoPickPerm()) }
                 ImageOptions.CANCEL -> dialog.dismiss()
             }
         }
         .show()
 
     private fun onResult(requestCode: Int): (Result) -> Unit = { onActivityResult(requestCode, it.resultCode, it.data) }
-    private val onError: (Throwable) -> Unit = { if (it is RxInlineActivityResult.Error) activity.toast("Something went wrong") }
+    private val onError: (Throwable) -> Unit = { if (it is RxInlineActivityResult.Error) activity.toast(translations.wrong()) }
 
     private fun pickPhoto() = RxInlineActivityResult(activity)
         .requestAsSingle(Intent(Intent.ACTION_PICK).apply { type = "image/*" })
@@ -92,7 +103,7 @@ class PhotoManager(
         takePictureIntent.resolveActivity(activity.packageManager)?.also {
             createImageFile()
                 .subscribeBy(
-                    onError = { activity.toast("Something went wrong, please try again") },
+                    onError = { activity.toast(translations.tryAgain()) },
                     onSuccess = { startPictureIntent(it, takePictureIntent) }
                 )
                 .addTo(disposables)
@@ -150,9 +161,9 @@ class PhotoManager(
             zoomImage.setImage(ImageSource.bitmap(b))
             zoomImage.setOnTouchListener { _, motionEvent -> gestureDetector.onTouchEvent(motionEvent) }
         }
-        .setPositiveButton("Done") { _, _ -> }
+        .setPositiveButton(translations.done()) { _, _ -> }
         .whatIf(currentPhotoPath?.isNotEmpty()) {
-            setNeutralButton("Save Photo") { _, _ ->
+            setNeutralButton(translations.savePhoto()) { _, _ ->
                 folderLocation.apply { if (!exists()) mkdirs() }
                 bitmap.saveFile(File(folderPath, "$pictureName.jpg"))
             }
@@ -166,7 +177,7 @@ class PhotoManager(
         compress(Bitmap.CompressFormat.JPEG, 100, stream)
         stream.flush()
         stream.close()
-        activity.toast("Photo Saved")
+        activity.toast(translations.photoSaved())
     }
 
     private fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {

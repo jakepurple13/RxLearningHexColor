@@ -22,7 +22,7 @@
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="History"
+                android:text="@string/history"
                 android:textAppearance="@style/ColorText.Digit"
                 app:cornerRadius="0dp" />
 
@@ -31,7 +31,7 @@
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Favorites"
+                android:text="@string/favorites"
                 android:textAppearance="@style/ColorText.Digit"
                 app:cornerRadius="0dp" />
 
@@ -40,7 +40,7 @@
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Add to Favorites"
+                android:text="@string/addToFavorite"
                 android:textAppearance="@style/ColorText.Digit"
                 app:cornerRadius="0dp" />
 
@@ -49,7 +49,7 @@
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="More Info"
+                android:text="@string/moreInfo"
                 android:textAppearance="@style/ColorText.Digit"
                 app:cornerRadius="0dp" />
 
@@ -58,7 +58,7 @@
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Select Image"
+                android:text="@string/selectImage"
                 android:textAppearance="@style/ColorText.Digit"
                 app:cornerRadius="0dp" />
 
@@ -67,7 +67,7 @@
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Random Color"
+                android:text="@string/randomColor"
                 android:textAppearance="@style/ColorText.Digit"
                 app:cornerRadius="0dp" />
 

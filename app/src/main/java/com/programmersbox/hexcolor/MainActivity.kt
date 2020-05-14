@@ -70,6 +70,8 @@ class MainActivity : AppCompatActivity() {
     private val favoriteCheck: (ColorApi) -> Boolean =
         { it.name?.value ?: "" == currentApiColor.name?.value ?: "" && it.hex?.value == currentApiColor.hex?.value }
 
+    private val translations: TranslationInterface by lazy { Translations(resources) }
+
     private val photoManager = PhotoManager(imageGet, this, disposables)
     private lateinit var rxArea: RxArea
 
@@ -92,7 +94,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         requestPermissions(Manifest.permission.INTERNET, Manifest.permission.ACCESS_NETWORK_STATE) {
-            if (!it.isGranted) toast("Please accept the permissions: ${it.deniedPermissions}")
+            if (!it.isGranted) toast(translations.permissions(it.deniedPermissions.toString()))
         }
 
         val digits = listOf(zero, one, two, three, four, five, six, seven, eight, nine, A, B, C, D, E, F)
@@ -187,7 +189,14 @@ class MainActivity : AppCompatActivity() {
             .observeOn(AndroidSchedulers.mainThread())
             .subscribeOn(AndroidSchedulers.mainThread())
             .map { favoriteList!!.any(favoriteCheck) && rxArea.getCurrentHex().length == 7 && it }
-            .subscribe { addFavorites.text = "${if (it) "Remove" else "Add"} Favorites" }
+            .subscribe { addFavorites.text = if (it) translations.removeFromFavorites() else translations.addToFavorite() }
+            .addTo(disposables)
+
+        favoriteSubject
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribeOn(AndroidSchedulers.mainThread())
+            .map { favoriteList!!.size }
+            .subscribe { viewFavorites.text = translations.favorite(it) }
             .addTo(disposables)
 
         favoriteSubject
@@ -335,14 +344,14 @@ class MainActivity : AppCompatActivity() {
     private fun addToFavorites(colorApi: ColorApi) {
         val favorites = favoriteList!!.toMutableList()
         if (favorites.all { it.name?.value != colorApi.name?.value || it.hex?.value != colorApi.hex?.value }) favorites.add(colorApi)
-            .also { toast("Added to Favorites") }
+            .also { toast(translations.addedFavorite()) }
         favoriteList = favorites
         favoriteSubject(true)
     }
 
     private fun removeFromFavorites(colorApi: ColorApi) {
         val favorites = favoriteList!!.toMutableList()
-        if (favorites.removeIf { it.name?.value == colorApi.name?.value && it.hex?.value == colorApi.hex?.value }) toast("Removed from Favorites")
+        if (favorites.removeIf { it.name?.value == colorApi.name?.value && it.hex?.value == colorApi.hex?.value }) toast(translations.removedFavorite())
         favoriteList = favorites
         favoriteSubject(true)
     }
@@ -359,7 +368,8 @@ class MainActivity : AppCompatActivity() {
     private fun showFavoritesOrHistory(list: List<ColorApi>, isFavorite: Boolean) {
         val view = layoutInflater.inflate(R.layout.favorite_layout, null)
         val adapter = FavoriteAdapter(list.toMutableList())
-        view.favTitle.text = "${if (isFavorite) "Favorites" else "History"}: ${list.size}"
+        val text = if (isFavorite) translations.favorite(list.size) else translations.history()
+        view.favTitle.text = "$text: ${list.size}"
         view.favoriteRV.adapter = adapter
         DragSwipeUtils.setDragSwipeUp(
             adapter, view.favoriteRV, listOf(Direction.UP, Direction.DOWN), listOf(Direction.START, Direction.END),
@@ -368,14 +378,15 @@ class MainActivity : AppCompatActivity() {
                     viewHolder: RecyclerView.ViewHolder, direction: Direction, dragSwipeAdapter: DragSwipeAdapter<ColorApi, *>
                 ) {
                     super.onSwiped(viewHolder, direction, dragSwipeAdapter)
-                    view.favTitle.text = "${if (isFavorite) "Favorites" else "History"}: ${adapter.dataList.size}"
+                    val newText = if (isFavorite) translations.favorite(adapter.dataList.size) else translations.history()
+                    view.favTitle.text = "$newText: ${adapter.dataList.size}"
                     if (isFavorite) favoriteSubject(adapter.dataList.any(favoriteCheck))
                 }
             }
         )
         MaterialAlertDialogBuilder(this)
             .setView(view)
-            .setPositiveButton("Done") { d, _ -> d.dismiss() }
+            .setPositiveButton(translations.done()) { d, _ -> d.dismiss() }
             .setOnDismissListener {
                 if (isFavorite) favoriteList = adapter.dataList
                 else history = adapter.dataList
