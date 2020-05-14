@@ -9,6 +9,8 @@ import android.widget.Toast
 import androidx.annotation.LayoutRes
 import androidx.core.graphics.applyCanvas
 import androidx.palette.graphics.Palette
+import codes.side.andcolorpicker.converter.setFromColorInt
+import codes.side.andcolorpicker.model.IntegerHSLColor
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.programmersbox.gsonutils.getJsonApi
 
@@ -16,6 +18,8 @@ import com.programmersbox.gsonutils.getJsonApi
 fun Context.toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
 
 fun getColorApi(color: String) = getJsonApi<ColorApi>("http://thecolorapi.com/id?hex=$color")
+
+fun Int.toHSLColor() = IntegerHSLColor().also { it.setFromColorInt(this) }
 
 fun Int.valueOf(): Triple<Int, Int, Int> {
     val r = (this shr 16 and 0xff)// / 255.0f

@@ -16,9 +16,7 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintSet
-import androidx.core.graphics.toColorInt
 import androidx.recyclerview.widget.RecyclerView
-import codes.side.andcolorpicker.converter.setFromColorInt
 import codes.side.andcolorpicker.converter.toColorInt
 import codes.side.andcolorpicker.group.PickerGroup
 import codes.side.andcolorpicker.group.registerPickers
@@ -74,6 +72,17 @@ class MainActivity : AppCompatActivity() {
 
     private val photoManager = PhotoManager(imageGet, this, disposables)
     private lateinit var rxArea: RxArea
+
+    private val pickerGroup by lazy {
+        PickerGroup<IntegerHSLColor>().also {
+            it.registerPickers(
+                hueColorPickerSeekBar,
+                saturationColorPickerSeekBar,
+                lightnessColorPickerSeekBar,
+                alphaColorPickerSeekBar
+            )
+        }
+    }
 
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -147,23 +156,6 @@ class MainActivity : AppCompatActivity() {
         uiShow
             .map { true }
             .subscribe(favoriteSubject::invoke)
-            .addTo(disposables)
-
-        val pickerGroup = PickerGroup<IntegerHSLColor>().also {
-            it.registerPickers(
-                hueColorPickerSeekBar,
-                saturationColorPickerSeekBar,
-                lightnessColorPickerSeekBar,
-                alphaColorPickerSeekBar
-            )
-        }
-
-        uiShow
-            .map { s -> ColorPickerValue(if (s.length == 7) IntegerHSLColor().also { it.setFromColorInt(s.toColorInt()) } else null) }
-            .subscribe {
-                it.color?.let { it1 -> swatchView.color = it1 }
-                it.color?.let { it1 -> pickerGroup.setColor(it1) }
-            }
             .addTo(disposables)
 
         colorApiShow
@@ -251,7 +243,6 @@ class MainActivity : AppCompatActivity() {
             .subscribe { swatchView.color?.toColorInt()?.let { randomColorInt(it) } }
             .addTo(disposables)
 
-        // Listen individual pickers or groups for changes
         pickerGroup.addListener(
             object : HSLColorPickerSeekBar.DefaultOnColorPickListener() {
                 override fun onColorChanged(picker: ColorSeekBar<IntegerHSLColor>, color: IntegerHSLColor, value: Int) {
@@ -289,6 +280,8 @@ class MainActivity : AppCompatActivity() {
         .subscribe { color ->
             layout.setBackgroundColor(color)
                 .also { window.statusBarColor = color }
+                .also { swatchView.color = color.toHSLColor() }
+                .also { pickerGroup.setColor(color.toHSLColor()) }
                 .let { ColorUtils.tintColor(color) to ColorUtils.tintColor(color, true) }
                 .also {
                     menuOptions.setColorFilter(it.first)
@@ -408,6 +401,4 @@ class MainActivity : AppCompatActivity() {
     class FavHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val name: TextView = itemView.colorName
     }
-
-    class ColorPickerValue(val color: IntegerHSLColor?)
 }
